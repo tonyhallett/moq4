@@ -11,7 +11,7 @@ namespace Moq
 	/// </summary>
 	public partial class SequenceException : Exception
 	{
-		internal SequenceException(Times times, int executedCount, ISetup setup = null) : base($"{(setup == null ? "" : $"{setup} ")}{times.GetExceptionMessage(executedCount)}") { }
+		internal SequenceException(Times times, int executedCount, ISetup setup) : base($"{setup} {times.GetExceptionMessage(executedCount)}") { }
 	}
 
 	/// <summary>
@@ -20,7 +20,6 @@ namespace Moq
 	public class VerifiableSetup
 	{
 		private ISequenceSetup<Times> sequenceSetup;
-		private ITrackedSetup<Times> trackedSetup;
 
 		/// <summary>
 		/// 
@@ -29,7 +28,6 @@ namespace Moq
 		public VerifiableSetup(ISequenceSetup<Times> sequenceSetup)
 		{
 			this.sequenceSetup = sequenceSetup;
-			this.trackedSetup = sequenceSetup.TrackedSetup;
 		}
 
 		/// <summary>
@@ -37,7 +35,7 @@ namespace Moq
 		/// </summary>
 		public void Verify()
 		{
-			VerifySequenceSetup(sequenceSetup);
+			Verify(sequenceSetup.Context, sequenceSetup.ExecutionCount, sequenceSetup.Setup);
 		}
 
 		/// <summary>
@@ -46,36 +44,10 @@ namespace Moq
 		/// <param name="times"></param>
 		public void Verify(Times times)
 		{
-			Verify(times, sequenceSetup.ExecutionCount,sequenceSetup.TrackedSetup.Setup);
+			Verify(times, sequenceSetup.ExecutionCount,sequenceSetup.Setup);
 		}
 
-		/// <summary>
-		/// 
-		/// </summary>
-		public void VerifyAll()
-		{
-			var trackedSetup = sequenceSetup.TrackedSetup;
-			foreach (var sequenceSetup in trackedSetup.SequenceSetups)
-			{
-				VerifySequenceSetup(sequenceSetup);
-			}
-		}
-
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="times"></param>
-		public void VerifyAll(Times times)
-		{
-			Verify(times, trackedSetup.ExecutionIndices.Count);
-		}
-
-		private void VerifySequenceSetup(ISequenceSetup<Times> sequenceSetup)
-		{
-			Verify(sequenceSetup.Context, sequenceSetup.ExecutionCount, sequenceSetup.TrackedSetup.Setup);
-		}
-
-		private void Verify(Times times, int executionCount, ISetup setup = null)
+		private void Verify(Times times, int executionCount, ISetup setup)
 		{
 			var success = times.Validate(executionCount);
 			if (!success)
@@ -101,8 +73,11 @@ namespace Moq
 		}
 
 		private int currentSequenceSetupIndex;
-		private ITrackedSetup<Times> lastTrackedSetup;
 
+		/// <summary>
+		/// 
+		/// </summary>
+		public bool Cyclical { get; set; }
 		/// <summary>
 		/// 
 		/// </summary>
@@ -122,37 +97,47 @@ namespace Moq
 			VerifiableSetup verifiableSetup = null;
 			base.InterceptSetup(setup, (sequenceSetup) =>
 			{
-				var trackedSetup = sequenceSetup.TrackedSetup;
-				if(lastTrackedSetup == trackedSetup)
-				{
-					throw new ArgumentException("Consecutive setups are the same",nameof(setup));
-				}
-				lastTrackedSetup = trackedSetup;
 				verifiableSetup = new VerifiableSetup(sequenceSetup);
 				return t;
 			});
 			return verifiableSetup;
 		}
 
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="trackedSetup"></param>
-		/// <param name="invocationIndex"></param>
-		/// <returns></returns>
-		protected override bool Condition(ITrackedSetup<Times> trackedSetup, int invocationIndex)
+		private bool SequenceCompletedAndLooseCondition()
 		{
+			var satisfied = false;
+			if (currentSequenceSetupIndex >= SequenceSetups.Count)
+			{
+				if (Cyclical)
+				{
+					currentSequenceSetupIndex = 0;
+				}
+				else
+				{
+					if (strict)
+					{
+						throw new StrictSequenceException() { UnmatchedSequenceInvocations = UnmatchedInvocations() };
+					}
+					satisfied = true;
+				}
+			}
+			return satisfied;
+		}
+
+		private bool SequenceCondition(ISequenceSetup<Times> sequenceSetup)
+		{
+			var condition = true;
 			var currentSequenceSetup = SequenceSetups[currentSequenceSetupIndex];
 
-			if (currentSequenceSetup.TrackedSetup == trackedSetup)
+			if (currentSequenceSetup == sequenceSetup)
 			{
 				ConfirmSequenceSetup(currentSequenceSetup);
 			}
 			else
 			{
 				ConfirmSequenceSetupSatisfied(currentSequenceSetup);
-				var nextSequenceSetupIndex = GetNextSequenceSetupIndex(trackedSetup);
-				if(nextSequenceSetupIndex != -1)
+				var nextSequenceSetupIndex = SequenceSetups.ToList().IndexOf(sequenceSetup);
+				if (nextSequenceSetupIndex > currentSequenceSetupIndex)
 				{
 					ConfirmSequenceSetupsSatisfied(nextSequenceSetupIndex);
 					ConfirmSequenceSetup(SequenceSetups[nextSequenceSetupIndex]);
@@ -160,33 +145,74 @@ namespace Moq
 				}
 				else
 				{
-					// cyclical
+					condition = SetupBeforeCurrentCondition(sequenceSetup, nextSequenceSetupIndex);
 				}
+			}
+
+			return condition;
+		}
+
+		private bool SetupBeforeCurrentCondition(ISequenceSetup<Times> newSequenceSetup, int newIndex)
+		{
+			if (Cyclical)
+			{
+				ConfirmSequenceSetupsSatisfied(SequenceSetups.Count);
+				currentSequenceSetupIndex = newIndex;
+				ConfirmSequenceSetup(newSequenceSetup);
+			}
+			else
+			{
+				if (strict)
+				{
+					throw new StrictSequenceException() { UnmatchedSequenceInvocations = UnmatchedInvocations() };
+				}
+				// should increment currentSequenceSetupIndex beyond the end ?
 			}
 
 			return true;
 		}
 
-		private void ConfirmSequenceSetupsSatisfied(int upToIndex)
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="sequenceSetup"></param>
+		/// <param name="invocationIndex"></param>
+		/// <returns></returns>
+		protected override bool Condition(ISequenceSetup<Times> sequenceSetup, int invocationIndex)
 		{
-			for (var j = currentSequenceSetupIndex + 1; j < upToIndex; j++)
-			{
-				ConfirmSequenceSetupSatisfied(SequenceSetups[j]);
-			}
+			// given that is going to be called for all with same expression ( in order added )
+			// and want to determine which applies to
+			// all have is the invocation index
+			return SequenceCompletedAndLooseCondition() || SequenceCondition(sequenceSetup);
 		}
 
-		private int GetNextSequenceSetupIndex(ITrackedSetup<Times> trackedSetup)
-		{
-			for (var i = currentSequenceSetupIndex + 1; i < SequenceSetups.Count; i++)
-			{
-				var sequenceSetup = SequenceSetups[i];
-				if (sequenceSetup.TrackedSetup == trackedSetup)
-				{
-					return i;
-				}
-			}
-			return -1;
-		}
+
+
+		//private int GetNextSequenceSetupIndex(ISequenceSetup<Times> trackedSetup)
+		//{
+		//	for (var i = currentSequenceSetupIndex + 1; i < SequenceSetups.Count; i++)
+		//	{
+		//		var sequenceSetup = SequenceSetups[i];
+		//		if (sequenceSetup.TrackedSetup == trackedSetup)
+		//		{
+		//			return i;
+		//		}
+		//	}
+		//	return -1;
+		//}
+
+		//private int GetSequenceSetupIndex(ITrackedSetup<Times> trackedSetup)
+		//{
+		//	for (var i = 0; i < SequenceSetups.Count; i++)
+		//	{
+		//		var sequenceSetup = SequenceSetups[i];
+		//		if (sequenceSetup.TrackedSetup == trackedSetup)
+		//		{
+		//			return i;
+		//		}
+		//	}
+		//	return -1;
+		//}
 
 		private void ConfirmSequenceSetupSatisfied(ISequenceSetup<Times> sequenceSetup)
 		{
@@ -206,9 +232,17 @@ namespace Moq
 				case Times.Kind.AtLeastOnce:
 					if (!times.Validate(sequenceSetup.ExecutionCount))
 					{
-						throw new SequenceException(times,sequenceSetup.ExecutionCount,sequenceSetup.TrackedSetup.Setup);
+						throw new SequenceException(times,sequenceSetup.ExecutionCount,sequenceSetup.Setup);
 					}
 					break;
+			}
+		}
+
+		private void ConfirmSequenceSetupsSatisfied(int upToIndex)
+		{
+			for (var j = currentSequenceSetupIndex + 1; j < upToIndex; j++)
+			{
+				ConfirmSequenceSetupSatisfied(SequenceSetups[j]);
 			}
 		}
 
@@ -250,7 +284,7 @@ namespace Moq
 
 			if (shouldThrow)
 			{
-				throw new SequenceException(times, sequenceSetup.ExecutionCount, sequenceSetup.TrackedSetup.Setup);
+				throw new SequenceException(times, sequenceSetup.ExecutionCount, sequenceSetup.Setup);
 			}
 		}
 	

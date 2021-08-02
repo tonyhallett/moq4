@@ -7,26 +7,24 @@ using System.Linq;
 
 namespace Moq
 {
-	/// <summary>
-	/// 
-	/// </summary>
-	public interface ITrackedSetup<TContext>
-	{
-		/// <summary>
-		/// 
-		/// </summary>
-		ISetup Setup { get; }
+	
+	//public interface ITrackedSetup<TContext>
+	//{
+	//	/// <summary>
+	//	/// 
+	//	/// </summary>
+	//	ISetup Setup { get; }
 
-		/// <summary>
-		/// 
-		/// </summary>
-		IReadOnlyList<int> ExecutionIndices { get; }
+	//	/// <summary>
+	//	/// 
+	//	/// </summary>
+	//	IReadOnlyList<int> ExecutionIndices { get; }
 
-		/// <summary>
-		/// 
-		/// </summary>
-		IReadOnlyList<ISequenceSetup<TContext>> SequenceSetups { get; }
-	}
+	//	/// <summary>
+	//	/// 
+	//	/// </summary>
+	//	IReadOnlyList<ISequenceSetup<TContext>> SequenceSetups { get; }
+	//}
 
 	/// <summary>
 	/// 
@@ -34,10 +32,8 @@ namespace Moq
 	/// <typeparam name="TContext"></typeparam>
 	public interface ISequenceSetup<TContext>
 	{
-		/// <summary>
-		/// 
-		/// </summary>
-		ITrackedSetup<TContext> TrackedSetup { get; }
+		
+		//ITrackedSetup<TContext> TrackedSetup { get; }
 
 		/// <summary>
 		/// 
@@ -53,26 +49,30 @@ namespace Moq
 		/// 
 		/// </summary>
 		int ExecutionCount { get; set; }
-
+		/// <summary>
+		/// 
+		/// </summary>
+		ISetup Setup { get; }
 	}
 
 	internal class SequenceSetup<TContext> : ISequenceSetup<TContext>
 	{
-		public ITrackedSetup<TContext> TrackedSetup { get; set; }
+		//public ITrackedSetup<TContext> TrackedSetup { get; set; }
 		public TContext Context { get; set; }
 		public int SetupIndex { get; set; }
 		public int ExecutionCount { get; set; }
+		public ISetup Setup { get; set; }
 	}
 
-	internal class TrackedSetup<TContext> : ITrackedSetup<TContext>
-	{
-		public Setup SetupInternal { get; set; }
-		public ISetup Setup => SetupInternal;
-		internal readonly List<int> executionIndicesInternal = new List<int>();
-		public IReadOnlyList<int> ExecutionIndices => executionIndicesInternal;
-		internal readonly List<ISequenceSetup<TContext>> sequenceSetupsInternal = new List<ISequenceSetup<TContext>>();
-		public IReadOnlyList<ISequenceSetup<TContext>> SequenceSetups => sequenceSetupsInternal;
-	}
+	//internal class TrackedSetup<TContext> : ITrackedSetup<TContext>
+	//{
+	//	public Setup SetupInternal { get; set; }
+	//	public ISetup Setup => SetupInternal;
+	//	internal readonly List<int> executionIndicesInternal = new List<int>();
+	//	public IReadOnlyList<int> ExecutionIndices => executionIndicesInternal;
+	//	internal readonly List<ISequenceSetup<TContext>> sequenceSetupsInternal = new List<ISequenceSetup<TContext>>();
+	//	public IReadOnlyList<ISequenceSetup<TContext>> SequenceSetups => sequenceSetupsInternal;
+	//}
 
 	/// <summary>
 	/// 
@@ -118,19 +118,21 @@ namespace Moq
 	/// </summary>
 	public abstract class MockSequenceBase<TContext>
 	{
-		private readonly bool strict;
+		/// <summary>
+		/// 
+		/// </summary>
+		protected readonly bool strict;
 		private int setupCount = -1;
 		private int executionCount = -1;
 		private readonly Mock[] mocks;
 		private readonly List<Mock> listenedToMocks = new List<Mock>();
-		private readonly List<ITrackedSetup<TContext>> trackedSetups = new List<ITrackedSetup<TContext>>();
+		//private readonly List<ITrackedSetup<TContext>> trackedSetups = new List<ITrackedSetup<TContext>>();
 		private readonly List<ISequenceSetup<TContext>> sequenceSetups = new List<ISequenceSetup<TContext>>();
+		private readonly List<ISetup> allSetups = new List<ISetup>();
 		internal readonly List<SequenceInvocation> sequenceInvocations = new List<SequenceInvocation>();
-		internal readonly List<TrackedSetup<TContext>> allTrackedSetups = new List<TrackedSetup<TContext>>();
-		/// <summary>
-		/// 
-		/// </summary>
-		protected IReadOnlyList<ITrackedSetup<TContext>> TrackedSetups => trackedSetups;
+		//internal readonly List<TrackedSetup<TContext>> allTrackedSetups = new List<TrackedSetup<TContext>>();
+		
+		//protected IReadOnlyList<ITrackedSetup<TContext>> TrackedSetups => trackedSetups;
 		/// <summary>
 		/// 
 		/// </summary>
@@ -193,14 +195,13 @@ namespace Moq
 				{
 					var terminalSetup = result.TerminalSetup;
 					var setupsExceptTerminal = result.NewSetups.Except(new SetupWithDepth[] { terminalSetup });
+					allSetups.AddRange(result.NewSetups.Select(sd => sd.Setup));
 					ListenForInvocations(result.NewSetups.Select(s => s.Setup.Mock));
-					var terminalTrackedSetup = ResolveSetups(setupsExceptTerminal, terminalSetup);
-					SetCondition(terminalTrackedSetup);
-					var sequenceSetup = new SequenceSetup<TContext> { TrackedSetup = terminalTrackedSetup, SetupIndex = setupCount };
+					var sequenceSetup = new SequenceSetup<TContext> { SetupIndex = setupCount, Setup = terminalSetup.Setup };
 					var context = trackedSetupCallback(sequenceSetup);
+					SetCondition(sequenceSetup);
 					sequenceSetup.Context = context;
 					sequenceSetups.Add(sequenceSetup);
-					terminalTrackedSetup.sequenceSetupsInternal.Add(sequenceSetup);
 
 					return;
 				}
@@ -210,52 +211,24 @@ namespace Moq
 			throw new ArgumentException("No setup performed",nameof(setup));
 		}
 
-		private TrackedSetup<TContext> ResolveSetups(IEnumerable<SetupWithDepth> setupsExceptTerminal,SetupWithDepth terminal)
+		private void SetCondition(ISequenceSetup<TContext> sequenceSetup)
 		{
-			foreach(var setup in setupsExceptTerminal)
-			{
-				ResolveSetup(setup);
-			}
-			return ResolveSetup(terminal, true);
-		}
-		
-		private TrackedSetup<TContext> ResolveSetup(SetupWithDepth setupWithDepth, bool sequenceSetup = false)
-		{
-			var setup = setupWithDepth.Setup;
-			var trackedSetup = allTrackedSetups.FirstOrDefault(ts => ts.SetupInternal.Expectation.Equals(setup.Expectation));
-			if(trackedSetup == null)
-			{
-				trackedSetup = new TrackedSetup<TContext> { SetupInternal = setup };
-				allTrackedSetups.Add(trackedSetup);
-				if (sequenceSetup)
-				{
-					trackedSetups.Add(trackedSetup);
-				}
-			}
-			else
-			{
-				setupWithDepth.ContainingMutableSetups.Remove(setup);
-			}
-			return trackedSetup;
-		}
-
-		private void SetCondition(TrackedSetup<TContext> trackedSetup)
-		{
-			var setup = trackedSetup.Setup;
-			if(setup is MethodCall methodCall)
+			var setup = sequenceSetup.Setup;
+			if (setup is MethodCall methodCall)
 			{
 				methodCall.SetCondition(
 					new Condition(() =>
 					{
 						var potentialSuccessIndex = executionCount + 1;
-						var success = Condition(trackedSetup, potentialSuccessIndex);
+						var success = Condition(sequenceSetup, potentialSuccessIndex);
 						if (success)
 						{
 							executionCount++;
 						}
 						return success;
-					}, 
-					() => {
+					},
+					() =>
+					{
 						/*
 							Invocation.MatchingSetup is not set until the condition has returned true. 
 							If need to move the test in to the condition part
@@ -268,12 +241,16 @@ namespace Moq
 								StrictnessFailure(UnmatchedInvocations());
 							}
 						}
-						
-						trackedSetup.executionIndicesInternal.Add(executionCount);
-						SetupExecuted(trackedSetup);
+
+						sequenceSetup.ExecutionCount++;
+						SetupExecuted(sequenceSetup);
 					})
 				);
-			} // should be throwing otherwise ?
+			}
+			else
+			{
+				throw new Exception("todo");//todo
+			}
 		}
 
 		/// <summary>
@@ -288,16 +265,16 @@ namespace Moq
 		/// <summary>
 		/// 
 		/// </summary>
-		/// <param name="trackedSetup"></param>
+		/// <param name="sequenceSetup"></param>
 		/// <param name="invocationIndex"></param>
 		/// <returns></returns>
-		protected abstract bool Condition(ITrackedSetup<TContext> trackedSetup, int invocationIndex);
+		protected abstract bool Condition(ISequenceSetup<TContext> sequenceSetup, int invocationIndex);
 
 		/// <summary>
 		/// 
 		/// </summary>
-		/// <param name="trackedSetup"></param>
-		protected virtual void SetupExecuted(ITrackedSetup<TContext> trackedSetup)
+		/// <param name="sequenceSetup"></param>
+		protected virtual void SetupExecuted(ISequenceSetup<TContext> sequenceSetup)
 		{
 
 		}
@@ -335,9 +312,9 @@ namespace Moq
 				return false;
 			}
 
-			foreach (var trackedSetup in allTrackedSetups)
+			foreach (var setup in allSetups)
 			{
-				if (invocation.MatchingSetup == trackedSetup.Setup)
+				if (invocation.MatchingSetup == setup)
 				{
 					sequenceInvocation.Matched = true;
 					break;
