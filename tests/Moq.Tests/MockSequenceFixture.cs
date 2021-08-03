@@ -188,7 +188,7 @@ namespace Moq.Tests
 		//	sequenceSetup = sequenceSetups[1];
 		//	Assert.Equal(contextCounter - 1, sequenceSetup.Context);
 		//	Assert.Equal(order, sequenceSetup.SetupIndex);
-			
+
 		//}
 
 		//[Fact]
@@ -244,7 +244,7 @@ namespace Moq.Tests
 		//		executionIndices2 = sequenceSetup.TrackedSetup.ExecutionIndices;
 		//		return 2;
 		//	});
-			
+
 		//	Assert.Empty(executionIndices1);
 		//	Assert.Empty(executionIndices2);
 
@@ -291,7 +291,7 @@ namespace Moq.Tests
 		//	var mock = new Mock<IFoo>();
 		//	var aMockSequence = new AMockSequence(true, mock);
 		//	aMockSequence.Setup(() => mock.Setup(m => m.Do(2)), sequenceSetup => sequenceSetup.SetupIndex);
-			
+
 		//	mock.Object.Do(1);
 		//	Assert.False(aMockSequence.StrictFailure);
 
@@ -335,7 +335,7 @@ namespace Moq.Tests
 		//		mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
 		//	}, (mocked, protectedMocked) =>
 		//	 {
-				 
+
 		//	 });
 		//}
 
@@ -538,7 +538,7 @@ namespace Moq.Tests
 		//			mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
 		//		}, (mocked, protectedMocked) =>
 		//		{
-					
+
 		//			protectedMocked.InvokeProtectedDo(1);
 		//		})
 		//	);
@@ -700,7 +700,7 @@ namespace Moq.Tests
 		//{
 		//	var mock = new Mock<IFoo>();
 		//	var mockSequence = new NewMockSequence(false, mock);
-			
+
 		//	void Setup()
 		//	{
 		//		mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
@@ -738,86 +738,67 @@ namespace Moq.Tests
 		//}
 
 		[Fact]
-		public void NewDoesNotReplicate()
+		public void QuickCheckOfTrackedSetup()
 		{
-			var mock = new Mock<IFoo>(MockBehavior.Strict);
-			var mocked = mock.Object;
-			//var sequence = new MockSequence();
-			//a.InSequence(sequence).Setup(x => x.Do(100)).Returns(101);
-			//a.InSequence(sequence).Setup(x => x.Do(100)).Returns(102);
-			//a.InSequence(sequence).Setup(x => x.Do(200)).Returns(201);
-			//a.InSequence(sequence).Setup(x => x.Do(100)).Returns(103);
-
-			//Assert.Equal(101, a.Object.Do(100));
-			//Assert.Equal(102, a.Object.Do(100));
-			//Assert.Equal(201, a.Object.Do(200));
-			//Assert.Equal(103, a.Object.Do(100));
-
-			var sequence = new NewMockSequence(false, mock);
-			// issue with SetupSequence
-
-			sequence.Setup(() => mock.Setup(m => m.Do(100)).Returns(101));
-			sequence.Setup(() => mock.Setup(m => m.Do(100)).Returns(102));
-			sequence.Setup(() => mock.Setup(m => m.Do(200)).Returns(201));
-			sequence.Setup(() => mock.Setup(m => m.Do(100)).Returns(103));
-			Assert.Equal(101, mocked.Do(100));
-			Assert.Equal(102, mocked.Do(100));
-			Assert.Equal(201, mocked.Do(200));
-			Assert.Equal(103, mocked.Do(100));
-
+			var mock = new Mock<IFoo>();
+			var sequence = new AMockSequence(false, mock);
+			sequence.Setup(() => mock.Setup(m => m.Do(1)), _ => 1);
+			sequence.Setup(() => mock.Setup(m => m.Do(2)), _ => 1);
+			sequence.Setup(() => mock.Setup(m => m.Do(1)), _ => 1);
 		}
 
-		//internal class AMockSequence : MockSequenceBase<int>
-		//{
-		//	public bool StrictFailure { get; set; }
-		//	public bool CallBaseForStrictFailure { get; set; }
-		//	public AMockSequence(bool strict, params Mock[] mocks) : base(strict, mocks) { }
-		//	public void Setup(Action setup,Func<ISequenceSetup<int>,int> setupCallback)
-		//	{
-		//		base.InterceptSetup(setup,setupCallback);
-		//	}
+		internal class AMockSequence : MockSequenceBase<int>
+		{
+			public bool StrictFailure { get; set; }
+			public bool CallBaseForStrictFailure { get; set; }
+			public AMockSequence(bool strict, params Mock[] mocks) : base(strict, mocks) { }
+			public void Setup(Action setup, Func<ISequenceSetup<int>, int> setupCallback)
+			{
+				base.InterceptSetup(setup, setupCallback);
+			}
 
-		//	public List<(ITrackedSetup<int> trackedSetup, int executionOrder)> ConditionCalls = new List<(ITrackedSetup<int>, int)>();
+			public List<(ISequenceSetup<int> trackedSetup, int executionOrder)> ConditionCalls = new List<(ISequenceSetup<int>, int)>();
 
-		//	protected override bool Condition(ITrackedSetup<int> trackedSetup, int invocationIndex)
-		//	{
-		//		ConditionCalls.Add((trackedSetup, invocationIndex));
-		//		return true;
-		//	}
+			protected override bool Condition(ISequenceSetup<int> trackedSetup, int invocationIndex)
+			{
+				ConditionCalls.Add((trackedSetup, invocationIndex));
+				return true;
+			}
 
-		//	internal List<TrackedSetup<int>> GetAllTrackedSetups()
-		//	{
-		//		return allTrackedSetups;
-		//	}
+			//internal List<TrackedSetup<int>> GetAllTrackedSetups()
+			//{
+			//	return allTrackedSetups;
+			//}
 
-		//	internal IReadOnlyList<ITrackedSetup<int>> GetTrackedSetups()
-		//	{
-		//		return TrackedSetups;
-		//	}
-		//	internal IReadOnlyList<ISequenceSetup<int>> GetSequenceSetups()
-		//	{
-		//		return SequenceSetups;
-		//	}
+			//internal IReadOnlyList<ITrackedSetup<int>> GetTrackedSetups()
+			//{
+			//	return TrackedSetups;
+			//}
 
-		//	public bool InvocationsHaveMatchingSetups()
-		//	{
-		//		return base.InvocationsHaveMatchingSequenceSetup();
-		//	}
+			internal IReadOnlyList<ISequenceSetup<int>> GetSequenceSetups()
+			{
+				return SequenceSetups;
+			}
 
-		//	protected override void StrictnessFailure(IEnumerable<SequenceInvocation> unmatchedInvocations)
-		//	{
-		//		StrictFailure = true;
-		//		if (CallBaseForStrictFailure)
-		//		{
-		//			base.StrictnessFailure(unmatchedInvocations);
-		//		}
-		//	}
+			public bool InvocationsHaveMatchingSetups()
+			{
+				return base.InvocationsHaveMatchingSequenceSetup();
+			}
 
-		//	protected override void VerifyImpl()
-		//	{
-		//		throw new NotImplementedException();
-		//	}
-		//}
+			protected override void StrictnessFailure(IEnumerable<SequenceInvocation> unmatchedInvocations)
+			{
+				StrictFailure = true;
+				if (CallBaseForStrictFailure)
+				{
+					base.StrictnessFailure(unmatchedInvocations);
+				}
+			}
+
+			protected override void VerifyImpl()
+			{
+				throw new NotImplementedException();
+			}
+		}
 
 		public interface IHaveNested
 		{
