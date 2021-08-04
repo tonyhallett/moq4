@@ -313,403 +313,392 @@ namespace Moq.Tests
 		//	Assert.Throws<StrictSequenceException>(() => mock.Object.Do(2));
 		//}
 
-		//private void LooseNewMockSequenceTestBase(Action<Mock<IFoo>,IProtectedAsMock<Protected,ProtectedLike>, NewMockSequence> setupSequence,Action<IFoo,Protected> act)
-		//{
-		//	var mock = new Mock<IFoo>();
-		//	var mocked = mock.Object;
-		//	var protectedMock = new Mock<Protected>();
-		//	var protectedAsMock = protectedMock.Protected().As<ProtectedLike>();
+		private void LooseNewMockSequenceTestBase(Action<Mock<IFoo>, IProtectedAsMock<Protected, ProtectedLike>, NewMockSequence> setupSequence, Action<IFoo, Protected> act)
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
+			var protectedMock = new Mock<Protected>();
+			var protectedAsMock = protectedMock.Protected().As<ProtectedLike>();
 
-		//	var protectedMocked = protectedMock.Object;
-		//	var mockSequence = new NewMockSequence(false, mock, protectedMock);
-		//	setupSequence(mock, protectedAsMock, mockSequence);
-		//	act(mocked, protectedMocked);
-		//}
+			var protectedMocked = protectedMock.Object;
+			var mockSequence = new NewMockSequence(false, mock, protectedMock);
+			setupSequence(mock, protectedAsMock, mockSequence);
+			act(mocked, protectedMocked);
+		}
 
-		//[Fact]
-		//public void MockSequenceShouldNotThrowIfNotCalled()
-		//{
-		//	LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//	{
-		//		mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
-		//		mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//	}, (mocked, protectedMocked) =>
-		//	 {
+		[Fact]
+		public void MockSequenceShouldNotThrowIfNotCalled()
+		{
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+			}, (mocked, protectedMocked) =>
+			 {
 
-		//	 });
-		//}
+			 });
+		}
 
-		//[Fact]
-		//public void MockSequenceShouldNotThrowIfCalledInOrder_OneTime()
-		//{
-		//	LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//	{
-		//		mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
-		//		mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//	}, (mocked, protectedMocked) =>
-		//	{
-		//		mocked.Do(1);
-		//		protectedMocked.InvokeProtectedDo(1);
-		//	});
-		//}
+		[Fact]
+		public void MockSequenceShouldNotThrowIfCalledInOrder_OneTime()
+		{
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)).Returns(1));
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(2));
+			}, (mocked, protectedMocked) =>
+			{
+				Assert.Equal(1,mocked.Do(1));
+				Assert.Equal(1,protectedMocked.InvokeProtectedDo(1));
+				Assert.Equal(2, mocked.Do(1));
+			});
+		}
 
-		//[Fact]
-		//public void MockSequenceShouldThrowIfNotCalledInOrder_OneTime()
-		//{
-		//	Assert.Throws<SequenceException>(() => 
-		//		LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//		{
-		//			mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
-		//			mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//		}, (mocked, protectedMocked) =>
-		//		{
-		//			protectedMocked.InvokeProtectedDo(1);
-		//			mocked.Do(1);
-		//		})
-		//	);
-		//}
+		[Fact]
+		public void MockSequenceShouldThrowIfNotCalledInOrder_OneTime()
+		{
+			Assert.Throws<SequenceException>(() =>
+				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+				{
+					mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
+					mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+				}, (mocked, protectedMocked) =>
+				{
+					protectedMocked.InvokeProtectedDo(1);
+					mocked.Do(1);
+				})
+			);
+		}
 
-		//[Fact]
-		//public void MockSequenceShouldNotThrowIfCalledCorrectExactTimes()
-		//{
-		//	LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//	{
-		//		mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Exactly(2));
-		//		mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//	}, (mocked, protectedMocked) =>
-		//	{
-		//		mocked.Do(1);
-		//		mocked.Do(1);
-		//		protectedMocked.InvokeProtectedDo(1);
-		//	});
-		//}
+		[Fact]
+		public void MockSequenceShouldNotThrowIfCalledCorrectExactTimes()
+		{
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.Exactly(2));
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(2));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)).Returns(1));
+			}, (mocked, protectedMocked) =>
+			{
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(2, mocked.Do(1));
+				Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+			});
+		}
 
-		//[Fact]
-		//public void MockSequenceShouldThrowIfNotCalledCorrectExactTimes()
-		//{
-		//	Assert.Throws<SequenceException>(() =>
-		//		LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//		{
-		//			mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Exactly(2));
-		//			mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//		}, (mocked, protectedMocked) =>
-		//		{
-		//			mocked.Do(1);
-		//			protectedMocked.InvokeProtectedDo(1);
-		//		})
-		//	);
-		//}
+		[Fact]
+		public void MockSequenceShouldThrowIfNotCalledCorrectExactTimes()
+		{
+			Assert.Throws<SequenceException>(() =>
+				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+				{
+					mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Exactly(2));
+					mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+				}, (mocked, protectedMocked) =>
+				{
+					mocked.Do(1);
+					protectedMocked.InvokeProtectedDo(1);
+				})
+			);
+		}
 
-		//[Fact]
-		//public void MockSequenceShouldNotThrowIfAtLeastTimesIsMet()
-		//{
-		//	LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//	{
-		//		mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.AtLeast(2));
-		//		mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//	}, (mocked, protectedMocked) =>
-		//	{
-		//		mocked.Do(1);
-		//		mocked.Do(1);
-		//		protectedMocked.InvokeProtectedDo(1);
-		//	});
-		//}
+		[Fact]
+		public void MockSequenceShouldNotThrowIfAtLeastTimesIsMet()
+		{
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.AtLeast(2));
+				// this will never be hit !
+				// mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(2));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)).Returns(1));
+			}, (mocked, protectedMocked) =>
+			{
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+			});
+		}
 
-		//[Fact]
-		//public void MockSequenceShouldNotThrowIfAtLeastTimesIsMetMoreThan()
-		//{
-		//	LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//	{
-		//		mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.AtLeast(2));
-		//		mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//	}, (mocked, protectedMocked) =>
-		//	{
-		//		mocked.Do(1);
-		//		mocked.Do(1);
-		//		mocked.Do(1);
-		//		protectedMocked.InvokeProtectedDo(1);
-		//	});
-		//}
+		[Fact]
+		public void MockSequenceShouldNotThrowIfAtLeastTimesIsMetMoreThan()
+		{
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.AtLeast(2));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)).Returns(1));
+			}, (mocked, protectedMocked) =>
+			{
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1,mocked.Do(1));
+				Assert.Equal(1,mocked.Do(1));
+				Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+			});
+		}
 
-		//[Fact]
-		//public void MockSequenceShouldThrowIfAtLeastTimesIsNotMet()
-		//{
-		//	Assert.Throws<SequenceException>(() =>
-		//		LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//		{
-		//			mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.AtLeast(2));
-		//			mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//		}, (mocked, protectedMocked) =>
-		//		{
-		//			mocked.Do(1);
-		//			protectedMocked.InvokeProtectedDo(1);
-		//		})
-		//	);
-		//}
+		[Fact]
+		public void MockSequenceShouldThrowIfAtLeastTimesIsNotMet()
+		{
+			Assert.Throws<SequenceException>(() =>
+				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+				{
+					mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.AtLeast(2));
+					mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+				}, (mocked, protectedMocked) =>
+				{
+					mocked.Do(1);
+					protectedMocked.InvokeProtectedDo(1);
+				})
+			);
+		}
 
-		//[Fact]
-		//public void MockSequenceShouldThrowImmediatelyIfNeverCalled()
-		//{
-		//	Assert.Throws<SequenceException>(() =>
-		//		LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//		{
-		//			mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
-		//			mockSequence.Setup(() => mock.Setup(m => m.Do(2)),Times.Never());
-		//			mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//		}, (mocked, protectedMocked) =>
-		//		{
-		//			mocked.Do(1);
-		//			mocked.Do(2);
-		//		})
-		//	);
-		//}
+		[Fact]
+		public void MockSequenceShouldThrowImmediatelyIfNeverCalled()
+		{
+			Assert.Throws<SequenceException>(() =>
+				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+				{
+					mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
+					mockSequence.Setup(() => mock.Setup(m => m.Do(2)), Times.Never());
+					mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+				}, (mocked, protectedMocked) =>
+				{
+					mocked.Do(1);
+					mocked.Do(2);
+				})
+			);
+		}
 
-		//[Fact]
-		//public void MockSequenceShouldNotThrowIfAtMostMet()
-		//{
-		//	LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//	{
-		//		mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.AtMost(2));
-		//		mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//	}, (mocked, protectedMocked) =>
-		//	{
-		//		mocked.Do(1);
-		//		mocked.Do(1);
-		//		protectedMocked.InvokeProtectedDo(1);
-		//	});
-		//}
+		[Fact]
+		public void MockSequenceShouldNotThrowIfAtMostMet()
+		{
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.AtMost(2));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)).Returns(1));
+			}, (mocked, protectedMocked) =>
+			{
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1,protectedMocked.InvokeProtectedDo(1));
+			});
+		}
 
-		//[Fact]
-		//public void MockSequenceShouldThrowImmediatelyIfInvokedMoreThanAtMost()
-		//{
-		//	Assert.Throws<SequenceException>(() =>
-		//		LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//		{
-		//			mockSequence.Setup(() => mock.Setup(m => m.Do(1)),Times.AtMost(2));
-		//			mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//		}, (mocked, protectedMocked) =>
-		//		{
-		//			mocked.Do(1);
-		//			mocked.Do(1);
-		//			mocked.Do(1);
-		//		})
-		//	);
-		//}
+		[Fact]
+		public void MockSequenceShouldThrowImmediatelyIfInvokedMoreThanAtMost()
+		{
+			Assert.Throws<SequenceException>(() =>
+				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+				{
+					mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.AtMost(2));
+					mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+				}, (mocked, protectedMocked) =>
+				{
+					mocked.Do(1);
+					mocked.Do(1);
+					mocked.Do(1);
+				})
+			);
+		}
 
-		//[Fact]
-		//public void MockSequenceShouldNotThrowIfBetweenInclusiveMet()
-		//{
-		//	LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//	{
-		//		mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Between(0, 2, Range.Inclusive));
-		//		mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//	}, (mocked, protectedMocked) =>
-		//	{
-		//		mocked.Do(1);
-		//		mocked.Do(1);
-		//		protectedMocked.InvokeProtectedDo(1);
-		//	});
-		//}
+		[Fact] // todo recap between logic Inclusive and Exclusive - Inclusive below 0, 1 or 2 times ?
+		public void MockSequenceShouldNotThrowIfBetweenInclusiveMet()
+		{
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.Between(0, 2, Range.Inclusive));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)).Returns(1));
+			}, (mocked, protectedMocked) =>
+			{
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+			});
+		}
 
-		//[Fact]
-		//public void MockSequenceShouldThrowImmediatelyIfBetweenInclusiveTooManyInvocations()
-		//{
-		//	Assert.Throws<SequenceException>(() =>
-		//		LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//		{
-		//			mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Between(0,2,Range.Inclusive));
-		//			mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//		}, (mocked, protectedMocked) =>
-		//		{
-		//			mocked.Do(1);
-		//			mocked.Do(1);
-		//			mocked.Do(1);
-		//		})
-		//	);
-		//}
+		[Fact]
+		public void MockSequenceShouldThrowImmediatelyIfBetweenInclusiveTooManyInvocations()
+		{
+			Assert.Throws<SequenceException>(() =>
+				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+				{
+					mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Between(0, 2, Range.Inclusive));
+					mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+				}, (mocked, protectedMocked) =>
+				{
+					mocked.Do(1);
+					mocked.Do(1);
+					mocked.Do(1);
+				})
+			);
+		}
 
-		//[Fact]
-		//public void MockSequenceShouldThrowIfBetweenInclusiveTooFewInvocations()
-		//{
-		//	Assert.Throws<SequenceException>(() =>
-		//		LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//		{
-		//			mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Between(1, 2, Range.Inclusive));
-		//			mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//		}, (mocked, protectedMocked) =>
-		//		{
+		[Fact]
+		public void MockSequenceShouldThrowIfBetweenInclusiveTooFewInvocations()
+		{
+			Assert.Throws<SequenceException>(() =>
+				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+				{
+					mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Between(1, 2, Range.Inclusive));
+					mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+				}, (mocked, protectedMocked) =>
+				{
+					protectedMocked.InvokeProtectedDo(1);
+				})
+			);
+		}
 
-		//			protectedMocked.InvokeProtectedDo(1);
-		//		})
-		//	);
-		//}
+		[Fact]
+		public void MockSequenceWillNotThrowWhenSkipOptionalTimesSetups()
+		{
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)), NewMockSequence.OptionalTimes());
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(2)), NewMockSequence.OptionalTimes());
+				mockSequence.Setup(() => mock.Setup(m => m.Do(2)).Returns(2));
+			}, (mocked, protectedMocked) =>
+			{
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(2, mocked.Do(2));
+			});
+		}
 
-		//[Fact]
-		//public void MockSequenceWillNotThrowWhenSkipOptionalTimesSetups()
-		//{
-		//	LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//	{
-		//		mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
-		//		mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)), NewMockSequence.OptionalTimes());
-		//		mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(2)), NewMockSequence.OptionalTimes());
-		//		mockSequence.Setup(() => mock.Setup(m => m.Do(2)));
-		//	}, (mocked, protectedMocked) =>
-		//	{
-		//		mocked.Do(1);
-		//		mocked.Do(2);
-		//	});
-		//}
+		[Fact]
+		public void MockSequenceWillThrowWhenSkipNonOptionalTimesSetups()
+		{
+			Assert.Throws<SequenceException>(() =>
+			{
+				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+				{
+					mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
+					mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)), NewMockSequence.OptionalTimes());
+					mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(2)), Times.Once());
+					mockSequence.Setup(() => mock.Setup(m => m.Do(2)));
+				}, (mocked, protectedMocked) =>
+				{
+					mocked.Do(1);
+					mocked.Do(2);
+				});
+			});
+		}
 
-		//[Fact]
-		//public void MockSequenceWillThrowWhenSkipNonOptionalTimesSetups()
-		//{
-		//	Assert.Throws<SequenceException>(() =>
-		//	{
-		//		LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//		{
-		//			mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
-		//			mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)), NewMockSequence.OptionalTimes());
-		//			mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(2)), Times.Once());
-		//			mockSequence.Setup(() => mock.Setup(m => m.Do(2)));
-		//		}, (mocked, protectedMocked) =>
-		//		{
-		//			mocked.Do(1);
-		//			mocked.Do(2);
-		//		});
-		//	});
-		//}
+		[Fact]
+		public void MockSequenceCanUseVerifiableSetupToVerifyASequenceSetup()
+		{
+			VerifiableSetup verifiableSetup1 = null;
+			VerifiableSetup verifiableSetup2 = null;
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				verifiableSetup1 = mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
+				verifiableSetup2 = mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+			}, (mocked, protectedMocked) =>
+			{
+				mocked.Do(1);
+			});
 
-		//[Fact]
-		//public void MockSequenceCanUseVerifiableSetupToVerifyASequenceSetup()
-		//{
-		//	VerifiableSetup verifiableSetup1 = null;
-		//	VerifiableSetup verifiableSetup2 = null;
-		//	LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//	{
-		//		verifiableSetup1 = mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
-		//		verifiableSetup2 = mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//	}, (mocked, protectedMocked) =>
-		//	{
-		//		mocked.Do(1);
-		//	});
+			verifiableSetup1.Verify();
+			Assert.Throws<SequenceException>(() => verifiableSetup2.Verify(Times.Once()));
+		}
 
-		//	verifiableSetup1.Verify();
-		//	Assert.Throws<SequenceException>(() => verifiableSetup2.Verify(Times.Once()));
-		//}
+		[Fact]
+		public void MockSequenceCanUseVerifiableSetupToVerifyAllSameSequenceSetups()
+		{
+			VerifiableSetup verifiableSetup1 = null;
+			VerifiableSetup verifiableSetup2 = null;
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				verifiableSetup1 = mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
+				verifiableSetup2 = mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+			}, (mocked, protectedMocked) =>
+			{
+				mocked.Do(1);
+				protectedMocked.InvokeProtectedDo(1);
+			});
 
-		//[Fact]
-		//public void MockSequenceCanUseVerifiableSetupToVerifyAllSameSequenceSetups()
-		//{
-		//	VerifiableSetup verifiableSetup1 = null;
-		//	VerifiableSetup verifiableSetup2 = null;
-		//	LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//	{
-		//		verifiableSetup1 = mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
-		//		verifiableSetup2 = mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//		mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
-		//		mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//	}, (mocked, protectedMocked) =>
-		//	{
-		//		mocked.Do(1);
-		//		protectedMocked.InvokeProtectedDo(1);
-		//	});
+			verifiableSetup1.VerifyAll(Times.Once());
+			Assert.Throws<SequenceException>(() => verifiableSetup2.VerifyAll());
+		}
 
-		//	verifiableSetup1.VerifyAll(Times.Once());
-		//	Assert.Throws<SequenceException>(() => verifiableSetup2.VerifyAll());
-		//}
+		[Fact]
+		public void MockSequenceVerifyVerifiesThatAllSetupsHaveBeenMet()
+		{
+			NewMockSequence sequence = null;
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Exactly(2));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+				sequence = mockSequence;
+			}, (mocked, protectedMocked) =>
+			{
+				mocked.Do(1);
+			});
+			Assert.Throws<SequenceException>(() => sequence.Verify());
 
-		//[Fact]
-		//public void MockSequenceVerifyVerifiesThatAllSetupsHaveBeenMet()
-		//{
-		//	NewMockSequence sequence = null;
-		//	LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//	{
-		//		mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Exactly(2));
-		//		mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//		sequence = mockSequence;
-		//	}, (mocked, protectedMocked) =>
-		//	{
-		//		mocked.Do(1);
-		//	});
-		//	Assert.Throws<SequenceException>(() => sequence.Verify());
+			NewMockSequence sequence2 = null;
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Exactly(2));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+				sequence2 = mockSequence;
+			}, (mocked, protectedMocked) =>
+			{
+				mocked.Do(1);
+				mocked.Do(1);
+			});
+			Assert.Throws<SequenceException>(() => sequence2.Verify());
 
-		//	NewMockSequence sequence2 = null;
-		//	LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//	{
-		//		mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Exactly(2));
-		//		mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//		sequence2 = mockSequence;
-		//	}, (mocked, protectedMocked) =>
-		//	{
-		//		mocked.Do(1);
-		//		mocked.Do(1);
-		//	});
-		//	Assert.Throws<SequenceException>(() => sequence2.Verify());
+			NewMockSequence sequence3 = null;
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Exactly(2));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+				sequence3 = mockSequence;
+			}, (mocked, protectedMocked) =>
+			{
+				mocked.Do(1);
+				mocked.Do(1);
+				protectedMocked.InvokeProtectedDo(1);
+			});
+			sequence3.Verify();
+		}
 
-		//	NewMockSequence sequence3 = null;
-		//	LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
-		//	{
-		//		mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Exactly(2));
-		//		mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
-		//		sequence3 = mockSequence;
-		//	}, (mocked, protectedMocked) =>
-		//	{
-		//		mocked.Do(1);
-		//		mocked.Do(1);
-		//		protectedMocked.InvokeProtectedDo(1);
-		//	});
-		//	sequence3.Verify();
-		//}
+		[Fact]
+		public void MockSequenceVerifyStrictVerifiesNoInvocationsWithoutSequenceSetup()
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
+			var protectedMock = new Mock<Protected>();
+			var protectedAsMock = protectedMock.Protected().As<ProtectedLike>();
 
-		//[Fact]
-		//public void MockSequenceVerifyStrictVerifiesNoInvocationsWithoutSequenceSetup()
-		//{
-		//	var mock = new Mock<IFoo>();
-		//	var mocked = mock.Object;
-		//	var protectedMock = new Mock<Protected>();
-		//	var protectedAsMock = protectedMock.Protected().As<ProtectedLike>();
+			var protectedMocked = protectedMock.Object;
+			var mockSequence = new NewMockSequence(true, mock, protectedMock);
+			mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
+			mocked.Do(1);
+			mocked.Do(2);
 
-		//	var protectedMocked = protectedMock.Object;
-		//	var mockSequence = new NewMockSequence(true, mock, protectedMock);
-		//	mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
-		//	mocked.Do(1);
-		//	mocked.Do(2);
+			Assert.Throws<StrictSequenceException>(mockSequence.Verify);
+		}
 
-		//	Assert.Throws<StrictSequenceException>(mockSequence.Verify);
-		//}
+		[Fact]
+		public void MockSequenceVerifyLooseDoesNotVerifyInvocationsWithoutSequenceSetup()
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
+			var protectedMock = new Mock<Protected>();
+			var protectedAsMock = protectedMock.Protected().As<ProtectedLike>();
 
-		//[Fact]
-		//public void MockSequenceVerifyLooseDoesNotVerifyInvocationsWithoutSequenceSetup()
-		//{
-		//	var mock = new Mock<IFoo>();
-		//	var mocked = mock.Object;
-		//	var protectedMock = new Mock<Protected>();
-		//	var protectedAsMock = protectedMock.Protected().As<ProtectedLike>();
+			var protectedMocked = protectedMock.Object;
+			var mockSequence = new NewMockSequence(false, mock, protectedMock);
+			mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
+			mocked.Do(1);
+			mocked.Do(2);
 
-		//	var protectedMocked = protectedMock.Object;
-		//	var mockSequence = new NewMockSequence(false, mock, protectedMock);
-		//	mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
-		//	mocked.Do(1);
-		//	mocked.Do(2);
-
-		//	mockSequence.Verify();
-		//}
-
-		//[Fact]
-		//public void MockSequenceShouldThrowWithConsecutiveSameSetups()
-		//{
-		//	var mock = new Mock<IFoo>();
-		//	var mockSequence = new NewMockSequence(false, mock);
-
-		//	void Setup()
-		//	{
-		//		mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
-		//	}
-
-		//	Setup();
-		//	var exception = Assert.Throws<ArgumentException>(Setup);
-		//	Assert.StartsWith("Consecutive setups are the same", exception.Message);
-		//}
+			mockSequence.Verify();
+		}
 
 		//[Fact]
 		//public void MockSequenceStrictShouldThrowIfCyclicInvocationAndNotCyclic()
@@ -737,15 +726,6 @@ namespace Moq.Tests
 		//	mocked.Do(1);
 		//}
 
-		[Fact]
-		public void QuickCheckOfTrackedSetup()
-		{
-			var mock = new Mock<IFoo>();
-			var sequence = new AMockSequence(false, mock);
-			sequence.Setup(() => mock.Setup(m => m.Do(1)), _ => 1);
-			sequence.Setup(() => mock.Setup(m => m.Do(2)), _ => 1);
-			sequence.Setup(() => mock.Setup(m => m.Do(1)), _ => 1);
-		}
 
 		internal class AMockSequence : MockSequenceBase<int>
 		{

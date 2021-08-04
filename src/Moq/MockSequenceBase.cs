@@ -27,8 +27,10 @@ namespace Moq
 	/// <typeparam name="TContext"></typeparam>
 	public interface ISequenceSetup<TContext>
 	{
-		
-		//ITrackedSetup<TContext> TrackedSetup { get; }
+		/// <summary>
+		/// 
+		/// </summary>
+		ITrackedSetup<TContext> TrackedSetup { get; }
 
 		/// <summary>
 		/// 
@@ -265,7 +267,6 @@ namespace Moq
 							}
 						}
 
-						sequenceSetup.ExecutionCount++;
 						SetupExecuted(sequenceSetup);
 					})
 				);

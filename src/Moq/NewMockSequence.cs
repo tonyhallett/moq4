@@ -11,7 +11,8 @@ namespace Moq
 	/// </summary>
 	public partial class SequenceException : Exception
 	{
-		internal SequenceException(Times times, int executedCount, ISetup setup) : base($"{setup} {times.GetExceptionMessage(executedCount)}") { }
+		internal SequenceException(Times times, int executedCount, ISetup setup) : 
+			base($"{(setup == null ? "" : $"{setup} ")}{times.GetExceptionMessage(executedCount)}") { }
 	}
 
 	/// <summary>
@@ -35,6 +36,11 @@ namespace Moq
 		/// </summary>
 		public void Verify()
 		{
+			VerifySequenceSetup(sequenceSetup);
+		}
+
+		private void VerifySequenceSetup(ISequenceSetup<Times> sequenceSetup)
+		{
 			Verify(sequenceSetup.Context, sequenceSetup.ExecutionCount, sequenceSetup.Setup);
 		}
 
@@ -47,7 +53,28 @@ namespace Moq
 			Verify(times, sequenceSetup.ExecutionCount,sequenceSetup.Setup);
 		}
 
-		private void Verify(Times times, int executionCount, ISetup setup)
+		/// <summary>
+		/// 
+		/// </summary>
+		public void VerifyAll()
+		{
+			foreach(var sequenceSetup in sequenceSetup.TrackedSetup.SequenceSetups)
+			{
+				VerifySequenceSetup(sequenceSetup);
+			}
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="times"></param>
+		public void VerifyAll(Times times)
+		{
+			var totalExecutions = sequenceSetup.TrackedSetup.SequenceSetups.Sum(ss => ss.ExecutionCount);
+			Verify(times, totalExecutions);
+		}
+
+		private void Verify(Times times, int executionCount, ISetup setup = null)
 		{
 			var success = times.Validate(executionCount);
 			if (!success)
@@ -103,6 +130,7 @@ namespace Moq
 			return verifiableSetup;
 		}
 
+		// to be reconsidered
 		private bool SequenceCompletedAndLooseCondition()
 		{
 			var satisfied = false;
@@ -129,14 +157,26 @@ namespace Moq
 			var condition = true;
 			var currentSequenceSetup = SequenceSetups[currentSequenceSetupIndex];
 
-			if (currentSequenceSetup == sequenceSetup)
+			if (currentSequenceSetup.TrackedSetup == sequenceSetup.TrackedSetup)
 			{
-				ConfirmSequenceSetup(currentSequenceSetup);
+				if (currentSequenceSetup == sequenceSetup)
+				{
+					ConfirmSequenceSetup(currentSequenceSetup);
+				}
+				else
+				{
+					return false; // the one we are interested in will come along soon
+				}
 			}
 			else
 			{
 				ConfirmSequenceSetupSatisfied(currentSequenceSetup);
-				var nextSequenceSetupIndex = SequenceSetups.ToList().IndexOf(sequenceSetup);
+				var nextSequenceSetupIndex = GetNextSequenceSetupIndex(currentSequenceSetup.SetupIndex, sequenceSetup);
+				if (nextSequenceSetupIndex != sequenceSetup.SetupIndex)
+				{
+					return false; // there will be another along
+				}
+
 				if (nextSequenceSetupIndex > currentSequenceSetupIndex)
 				{
 					ConfirmSequenceSetupsSatisfied(nextSequenceSetupIndex);
@@ -145,11 +185,38 @@ namespace Moq
 				}
 				else
 				{
+					// this logic probably needs to change
 					condition = SetupBeforeCurrentCondition(sequenceSetup, nextSequenceSetupIndex);
 				}
 			}
 
 			return condition;
+		}
+
+		private int GetNextSequenceSetupIndex(int currentSetupIndex, ISequenceSetup<Times> newSequenceSetup)
+		{
+			int firstSequenceSetupIndex = -1;
+			int nextSequenceSetupIndex = -1;
+			var sequenceSetups = newSequenceSetup.TrackedSetup.SequenceSetups;
+			foreach(var sequenceSetup in sequenceSetups)
+			{
+				var sequenceSetupIndex = sequenceSetup.SetupIndex;
+				if (firstSequenceSetupIndex == -1)
+				{
+					firstSequenceSetupIndex = sequenceSetupIndex;
+				}
+				if(sequenceSetupIndex > currentSetupIndex)
+				{
+					nextSequenceSetupIndex = sequenceSetupIndex;
+					break;
+				}
+			}
+
+			if(nextSequenceSetupIndex != -1)
+			{
+				return nextSequenceSetupIndex;
+			}
+			return firstSequenceSetupIndex;
 		}
 
 		private bool SetupBeforeCurrentCondition(ISequenceSetup<Times> newSequenceSetup, int newIndex)
@@ -180,9 +247,6 @@ namespace Moq
 		/// <returns></returns>
 		protected override bool Condition(ISequenceSetup<Times> sequenceSetup, int invocationIndex)
 		{
-			// given that is going to be called for all with same expression ( in order added )
-			// and want to determine which applies to
-			// all have is the invocation index
 			return SequenceCompletedAndLooseCondition() || SequenceCondition(sequenceSetup);
 		}
 
