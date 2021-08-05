@@ -10,75 +10,56 @@ namespace Moq
 	/// <summary>
 	/// 
 	/// </summary>
-	/// <typeparam name="TContext"></typeparam>
-	public interface ITrackedSetup<TContext>
-	{
-		//IReadOnlyList<int> ExecutionIndices { get; }
-
-		/// <summary>
-		/// 
-		/// </summary>
-		IReadOnlyList<ISequenceSetup<TContext>> SequenceSetups { get; }
-	}
-
-	/// <summary>
-	/// 
-	/// </summary>
-	/// <typeparam name="TContext"></typeparam>
-	public interface ISequenceSetup<TContext>
+	public abstract class SequenceSetupBase
 	{
 		/// <summary>
 		/// 
 		/// </summary>
-		ITrackedSetup<TContext> TrackedSetup { get; }
+		protected internal object TrackedSetupBase { get; set; }
 
 		/// <summary>
 		/// 
 		/// </summary>
-		TContext Context { get; }
-
-		/// <summary>
-		/// 
-		/// </summary>
-		int SetupIndex { get; }
-
-		/// <summary>
-		/// 
-		/// </summary>
-		int ExecutionCount { get; set; }
-		/// <summary>
-		/// 
-		/// </summary>
-		ISetup Setup { get; }
-	}
-
-	internal class SequenceSetup<TContext> : ISequenceSetup<TContext>
-	{
-		public ITrackedSetup<TContext> TrackedSetup { get; set; }
-		public TContext Context { get; set; }
 		public int SetupIndex { get; set; }
-		public int ExecutionCount { get; set; }
+
+		/// <summary>
+		/// 
+		/// </summary>
 		public ISetup Setup => SetupInternal;
 		internal Setup SetupInternal { get; set; }
 
 	}
 
-	internal class TrackedSetup<TContext> : ITrackedSetup<TContext>
+	/// <summary>
+	/// 
+	/// </summary>
+	/// <typeparam name="TSequenceSetup"></typeparam>
+	public abstract class TrackedSetupBase<TSequenceSetup> where TSequenceSetup : SequenceSetupBase
 	{
-		public TrackedSetup(SequenceSetup<TContext> sequenceSetup){
-			sequenceSetupsInternal.Add(sequenceSetup);
-			InvocationShape = sequenceSetup.SetupInternal.Expectation;
-			sequenceSetup.TrackedSetup = this;
-		}
-		private readonly List<ISequenceSetup<TContext>> sequenceSetupsInternal = new List<ISequenceSetup<TContext>>();
-		internal void AddSequenceSetup(SequenceSetup<TContext> sequenceSetup)
+		private readonly List<TSequenceSetup> sequenceSetupsInternal = new List<TSequenceSetup>();
+
+		/// <summary>
+		/// 
+		/// </summary>
+		protected IReadOnlyList<TSequenceSetup> SequenceSetups => sequenceSetupsInternal;
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="sequenceSetup"></param>
+		public TrackedSetupBase(TSequenceSetup sequenceSetup)
 		{
 			sequenceSetupsInternal.Add(sequenceSetup);
-			sequenceSetup.TrackedSetup = this;
+			InvocationShape = sequenceSetup.SetupInternal.Expectation;
+			sequenceSetup.TrackedSetupBase = this;
+		}
+		
+		internal void AddSequenceSetup(TSequenceSetup sequenceSetup)
+		{
+			sequenceSetupsInternal.Add(sequenceSetup);
+			sequenceSetup.TrackedSetupBase = this;
 		}
 		internal InvocationShape InvocationShape { get; }
-
-		public IReadOnlyList<ISequenceSetup<TContext>> SequenceSetups => sequenceSetupsInternal;
 	}
 
 	/// <summary>
@@ -122,8 +103,10 @@ namespace Moq
 
 	/// <summary>
 	/// 
-	/// </summary>
-	public abstract class MockSequenceBase<TContext>
+	/// </summary>     
+	public abstract class MockSequenceBase<TSequenceSetup,TTrackedSetup> 
+		where TSequenceSetup : SequenceSetupBase 
+		where TTrackedSetup : TrackedSetupBase<TSequenceSetup>
 	{
 		/// <summary>
 		/// 
@@ -131,17 +114,17 @@ namespace Moq
 		protected readonly bool strict;
 		private int setupCount = -1;
 		private readonly Mock[] mocks;
-		private readonly List<Mock> listenedToMocks = new List<Mock>();
-		private readonly List<TrackedSetup<TContext>> trackedSetups = new List<TrackedSetup<TContext>>();
-		private readonly List<ISequenceSetup<TContext>> sequenceSetups = new List<ISequenceSetup<TContext>>();
-		private readonly List<ISetup> allSetups = new List<ISetup>();
+		private readonly List<Mock> listenedToMocks = new List<Mock>(); // later listener that contains the invocations ?
 		internal readonly List<SequenceInvocation> sequenceInvocations = new List<SequenceInvocation>();
-		
-		//protected IReadOnlyList<ITrackedSetup<TContext>> TrackedSetups => trackedSetups;
+
+		private readonly List<TTrackedSetup> trackedSetups = new List<TTrackedSetup>();
+		private readonly List<TSequenceSetup> sequenceSetups = new List<TSequenceSetup>();
 		/// <summary>
 		/// 
 		/// </summary>
-		protected IReadOnlyList<ISequenceSetup<TContext>> SequenceSetups => sequenceSetups;
+		protected IReadOnlyList<TSequenceSetup> SequenceSetups => sequenceSetups;
+		private readonly List<ISetup> allSetups = new List<ISetup>();
+		
 		
 		/// <summary>
 		/// 
@@ -187,7 +170,7 @@ namespace Moq
 		/// </summary>
 		/// <param name="setup"></param>
 		/// <param name="sequenceSetupCallback"></param>
-		protected void InterceptSetup(Action setup, Func<ISequenceSetup<TContext>,TContext> sequenceSetupCallback)
+		protected void InterceptSetup(Action setup, Action<TSequenceSetup> sequenceSetupCallback)
 		{
 			setupCount++;
 			List<List<SetupWithDepth>> allSetupsBefore = mocks.Select(m => MoqSetupFinder.GetAllSetups(m)).ToList();
@@ -202,11 +185,13 @@ namespace Moq
 					var setupsExceptTerminal = result.NewSetups.Except(new SetupWithDepth[] { terminalSetup });
 					allSetups.AddRange(result.NewSetups.Select(sd => sd.Setup));
 					ListenForInvocations(result.NewSetups.Select(s => s.Setup.Mock));
-					var sequenceSetup = new SequenceSetup<TContext> { SetupIndex = setupCount, SetupInternal = terminalSetup.Setup };
+
+					var sequenceSetup = (TSequenceSetup)Activator.CreateInstance(typeof(TSequenceSetup));
+					sequenceSetup.SetupIndex = setupCount;
+					sequenceSetup.SetupInternal = terminalSetup.Setup;
 					TrackSetup(sequenceSetup);
-					var context = sequenceSetupCallback(sequenceSetup);
-					SetCondition(sequenceSetup);
-					sequenceSetup.Context = context;
+					sequenceSetupCallback(sequenceSetup);
+					SetCondition(sequenceSetup,terminalSetup.Setup);
 					sequenceSetups.Add(sequenceSetup);
 
 					return;
@@ -217,25 +202,27 @@ namespace Moq
 			throw new ArgumentException("No setup performed",nameof(setup));
 		}
 
-		private void TrackSetup(SequenceSetup<TContext> newSequenceSetup)
+		
+
+		private void TrackSetup(TSequenceSetup newSequenceSetup)
 		{
 			var invocationShape = newSequenceSetup.SetupInternal.Expectation;
 			var trackedSetup = trackedSetups.SingleOrDefault(ts => ts.InvocationShape.Equals(invocationShape));
-			if(trackedSetup == null)
+			if (trackedSetup == null)
 			{
-				trackedSetup = new TrackedSetup<TContext>(newSequenceSetup);
+				trackedSetup = (TTrackedSetup)Activator.CreateInstance(typeof(TTrackedSetup),newSequenceSetup);
 				trackedSetups.Add(trackedSetup);
 			}
 			else
 			{
 				trackedSetup.AddSequenceSetup(newSequenceSetup);
 			}
-			
+
 		}
 
-		private void SetCondition(ISequenceSetup<TContext> sequenceSetup)
+		private void SetCondition(TSequenceSetup sequenceSetup,ISetup setup)
 		{
-			var setup = sequenceSetup.Setup;
+			//var setup = sequenceSetup.Setup;
 			if (setup is MethodCall methodCall)
 			{
 				methodCall.SetCondition(
@@ -282,13 +269,13 @@ namespace Moq
 		/// </summary>
 		/// <param name="sequenceSetup"></param>
 		/// <returns></returns>
-		protected abstract bool Condition(ISequenceSetup<TContext> sequenceSetup);
+		protected abstract bool Condition(TSequenceSetup sequenceSetup);
 
 		/// <summary>
 		/// 
 		/// </summary>
 		/// <param name="sequenceSetup"></param>
-		protected virtual void SetupExecuted(ISequenceSetup<TContext> sequenceSetup)
+		protected virtual void SetupExecuted(TSequenceSetup sequenceSetup)
 		{
 
 		}

@@ -349,8 +349,8 @@ namespace Moq.Tests
 				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(2));
 			}, (mocked, protectedMocked) =>
 			{
-				Assert.Equal(1,mocked.Do(1));
-				Assert.Equal(1,protectedMocked.InvokeProtectedDo(1));
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
 				Assert.Equal(2, mocked.Do(1));
 			});
 		}
@@ -421,10 +421,10 @@ namespace Moq.Tests
 					mocked.Do(1);
 					mocked.Do(1);
 					mocked.Do(1);
-					
+
 				})
 			);
-			
+
 			Assert.Equal("Expected invocation on the mock exactly 2 times, but was 3 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
@@ -453,8 +453,8 @@ namespace Moq.Tests
 			}, (mocked, protectedMocked) =>
 			{
 				Assert.Equal(1, mocked.Do(1));
-				Assert.Equal(1,mocked.Do(1));
-				Assert.Equal(1,mocked.Do(1));
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, mocked.Do(1));
 				Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
 			});
 		}
@@ -525,7 +525,7 @@ namespace Moq.Tests
 			{
 				Assert.Equal(1, mocked.Do(1));
 				Assert.Equal(1, mocked.Do(1));
-				Assert.Equal(1,protectedMocked.InvokeProtectedDo(1));
+				Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
 			});
 		}
 
@@ -636,7 +636,7 @@ namespace Moq.Tests
 		}
 
 		[Fact]
-		public void MockSequenceConsecutiveBetweenInclusiveOrExclusibeCanBeSpecifiedWithAtLeastThenAtMost()
+		public void MockSequenceConsecutiveBetweenInclusiveOrExclusiveCanBeSpecifiedWithAtLeastThenAtMost()
 		{
 			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
 			{
@@ -651,7 +651,9 @@ namespace Moq.Tests
 				Assert.Equal(2, mocked.Do(1));
 				Assert.Equal(2, mocked.Do(1));
 				Assert.Equal(2, mocked.Do(1));
-				Assert.Throws<SequenceException>(() => mocked.Do(1));
+				var exception = Assert.Throws<SequenceException>(() => mocked.Do(1));
+				Assert.Equal("Expected invocation on the mock at most 3 times, but was 4 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+
 				Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
 			});
 		}
@@ -884,7 +886,7 @@ namespace Moq.Tests
 			mocked.Do(1);
 			mocked.Do(2);
 			var exception = Assert.Throws<StrictSequenceException>(() => mocked.Do(1));
-			
+
 		}
 
 		[Fact]
@@ -901,7 +903,7 @@ namespace Moq.Tests
 		}
 
 		[Fact]
-		public void MockSequenceWorksCycically()
+		public void MockSequenceWorksCyclically()
 		{
 			var mock = new Mock<IFoo>();
 			var mocked = mock.Object;
@@ -910,63 +912,62 @@ namespace Moq.Tests
 			sequence.Setup(() => mock.Setup(m => m.Do(2)));
 			mocked.Do(1);
 			mocked.Do(2);
-			mocked.Do(1); // need to reset the invocations ! no still need to retain for verification
-			// also how does VerificationSetup work with cyclical !
+			mocked.Do(1);
 		}
 
 
-		internal class AMockSequence : MockSequenceBase<int>
-		{
-			public bool StrictFailure { get; set; }
-			public bool CallBaseForStrictFailure { get; set; }
-			public AMockSequence(bool strict, params Mock[] mocks) : base(strict, mocks) { }
-			public void Setup(Action setup, Func<ISequenceSetup<int>, int> setupCallback)
-			{
-				base.InterceptSetup(setup, setupCallback);
-			}
+		//internal class AMockSequence : MockSequenceBase<int>
+		//{
+		//	public bool StrictFailure { get; set; }
+		//	public bool CallBaseForStrictFailure { get; set; }
+		//	public AMockSequence(bool strict, params Mock[] mocks) : base(strict, mocks) { }
+		//	public void Setup(Action setup, Func<ISequenceSetup<int>, int> setupCallback)
+		//	{
+		//		base.InterceptSetup(setup, setupCallback);
+		//	}
 
-			public List<ISequenceSetup<int>> ConditionCalls = new List<ISequenceSetup<int>>();
+		//	public List<ISequenceSetup<int>> ConditionCalls = new List<ISequenceSetup<int>>();
 
-			protected override bool Condition(ISequenceSetup<int> trackedSetup)
-			{
-				ConditionCalls.Add(trackedSetup);
-				return true;
-			}
+		//	protected override bool Condition(ISequenceSetup<int> trackedSetup)
+		//	{
+		//		ConditionCalls.Add(trackedSetup);
+		//		return true;
+		//	}
 
-			//internal List<TrackedSetup<int>> GetAllTrackedSetups()
-			//{
-			//	return allTrackedSetups;
-			//}
+		//	//internal List<TrackedSetup<int>> GetAllTrackedSetups()
+		//	//{
+		//	//	return allTrackedSetups;
+		//	//}
 
-			//internal IReadOnlyList<ITrackedSetup<int>> GetTrackedSetups()
-			//{
-			//	return TrackedSetups;
-			//}
+		//	//internal IReadOnlyList<ITrackedSetup<int>> GetTrackedSetups()
+		//	//{
+		//	//	return TrackedSetups;
+		//	//}
 
-			internal IReadOnlyList<ISequenceSetup<int>> GetSequenceSetups()
-			{
-				return SequenceSetups;
-			}
+		//	internal IReadOnlyList<ISequenceSetup<int>> GetSequenceSetups()
+		//	{
+		//		return SequenceSetups;
+		//	}
 
-			public bool InvocationsHaveMatchingSetups()
-			{
-				return base.InvocationsHaveMatchingSequenceSetup();
-			}
+		//	public bool InvocationsHaveMatchingSetups()
+		//	{
+		//		return base.InvocationsHaveMatchingSequenceSetup();
+		//	}
 
-			protected override void StrictnessFailure(IEnumerable<SequenceInvocation> unmatchedInvocations)
-			{
-				StrictFailure = true;
-				if (CallBaseForStrictFailure)
-				{
-					base.StrictnessFailure(unmatchedInvocations);
-				}
-			}
+		//	protected override void StrictnessFailure(IEnumerable<SequenceInvocation> unmatchedInvocations)
+		//	{
+		//		StrictFailure = true;
+		//		if (CallBaseForStrictFailure)
+		//		{
+		//			base.StrictnessFailure(unmatchedInvocations);
+		//		}
+		//	}
 
-			protected override void VerifyImpl()
-			{
-				throw new NotImplementedException();
-			}
-		}
+		//	protected override void VerifyImpl()
+		//	{
+		//		throw new NotImplementedException();
+		//	}
+		//}
 
 		public interface IHaveNested
 		{
