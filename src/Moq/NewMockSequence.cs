@@ -50,7 +50,7 @@ namespace Moq
 		/// <param name="times"></param>
 		public void Verify(Times times)
 		{
-			Verify(times, sequenceSetup.ExecutionCount, sequenceSetup.Setup);
+			Verify(times, sequenceSetup.TotalExecutionCount, sequenceSetup.Setup);
 		}
 
 		/// <summary>
@@ -153,7 +153,7 @@ namespace Moq
 
 		internal int TotalExecutions()
 		{
-			return SequenceSetups.Sum(ss => ss.ExecutionCount);
+			return SequenceSetups.Sum(ss => ss.TotalExecutionCount);
 		}
 
 		internal int GetNextSequenceSetupIndex(int currentSetupIndex)
