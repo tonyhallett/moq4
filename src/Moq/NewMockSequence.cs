@@ -12,7 +12,7 @@ namespace Moq
 	public partial class SequenceException : Exception
 	{
 		internal SequenceException(Times times, int executedCount, ISetup setup) : 
-			base($"{(setup == null ? "" : $"{setup} ")}{times.GetExceptionMessage(executedCount)}") { }
+			base($"{times.GetExceptionMessage(executedCount)}{(setup == null ? "" : $"{setup}")}") { }
 	}
 
 	/// <summary>
@@ -130,69 +130,6 @@ namespace Moq
 			return verifiableSetup;
 		}
 
-		// to be reconsidered
-		private bool SequenceCompletedAndLooseCondition()
-		{
-			var satisfied = false;
-			if (currentSequenceSetupIndex >= SequenceSetups.Count)
-			{
-				if (Cyclical)
-				{
-					currentSequenceSetupIndex = 0;
-				}
-				else
-				{
-					if (strict)
-					{
-						throw new StrictSequenceException() { UnmatchedSequenceInvocations = UnmatchedInvocations() };
-					}
-					satisfied = true;
-				}
-			}
-			return satisfied;
-		}
-
-		private bool SequenceCondition(ISequenceSetup<Times> sequenceSetup)
-		{
-			var condition = true;
-			var currentSequenceSetup = SequenceSetups[currentSequenceSetupIndex];
-
-			if (currentSequenceSetup.TrackedSetup == sequenceSetup.TrackedSetup)
-			{
-				if (currentSequenceSetup == sequenceSetup)
-				{
-					ConfirmSequenceSetup(currentSequenceSetup);
-				}
-				else
-				{
-					return false; // the one we are interested in will come along soon
-				}
-			}
-			else
-			{
-				ConfirmSequenceSetupSatisfied(currentSequenceSetup);
-				var nextSequenceSetupIndex = GetNextSequenceSetupIndex(currentSequenceSetup.SetupIndex, sequenceSetup);
-				if (nextSequenceSetupIndex != sequenceSetup.SetupIndex)
-				{
-					return false; // there will be another along
-				}
-
-				if (nextSequenceSetupIndex > currentSequenceSetupIndex)
-				{
-					ConfirmSequenceSetupsSatisfied(nextSequenceSetupIndex);
-					ConfirmSequenceSetup(SequenceSetups[nextSequenceSetupIndex]);
-					currentSequenceSetupIndex = nextSequenceSetupIndex;
-				}
-				else
-				{
-					// this logic probably needs to change
-					condition = SetupBeforeCurrentCondition(sequenceSetup, nextSequenceSetupIndex);
-				}
-			}
-
-			return condition;
-		}
-
 		private int GetNextSequenceSetupIndex(int currentSetupIndex, ISequenceSetup<Times> newSequenceSetup)
 		{
 			int firstSequenceSetupIndex = -1;
@@ -229,11 +166,10 @@ namespace Moq
 			}
 			else
 			{
-				if (strict)
+				if (strict) // to be determined
 				{
 					throw new StrictSequenceException() { UnmatchedSequenceInvocations = UnmatchedInvocations() };
 				}
-				// should increment currentSequenceSetupIndex beyond the end ?
 			}
 
 			return true;
@@ -243,40 +179,46 @@ namespace Moq
 		/// 
 		/// </summary>
 		/// <param name="sequenceSetup"></param>
-		/// <param name="invocationIndex"></param>
 		/// <returns></returns>
-		protected override bool Condition(ISequenceSetup<Times> sequenceSetup, int invocationIndex)
+		protected override bool Condition(ISequenceSetup<Times> sequenceSetup)
 		{
-			return SequenceCompletedAndLooseCondition() || SequenceCondition(sequenceSetup);
+			var condition = true;
+			var currentSequenceSetup = SequenceSetups[currentSequenceSetupIndex];
+
+			if (currentSequenceSetup.TrackedSetup == sequenceSetup.TrackedSetup)
+			{
+				if (currentSequenceSetup == sequenceSetup)
+				{
+					ConfirmSequenceSetup(currentSequenceSetup);
+				}
+				else
+				{
+					return false; // the one we are interested in will come along soon
+				}
+			}
+			else
+			{
+				ConfirmSequenceSetupSatisfied(currentSequenceSetup);
+				var nextSequenceSetupIndex = GetNextSequenceSetupIndex(currentSequenceSetup.SetupIndex, sequenceSetup);
+				if (nextSequenceSetupIndex != sequenceSetup.SetupIndex)
+				{
+					return false; // there will be another along
+				}
+
+				if (nextSequenceSetupIndex > currentSequenceSetupIndex)
+				{
+					ConfirmSequenceSetupsSatisfied(nextSequenceSetupIndex);
+					ConfirmSequenceSetup(SequenceSetups[nextSequenceSetupIndex]);
+					currentSequenceSetupIndex = nextSequenceSetupIndex;
+				}
+				else
+				{
+					condition = SetupBeforeCurrentCondition(sequenceSetup, nextSequenceSetupIndex);
+				}
+			}
+
+			return condition;
 		}
-
-
-
-		//private int GetNextSequenceSetupIndex(ISequenceSetup<Times> trackedSetup)
-		//{
-		//	for (var i = currentSequenceSetupIndex + 1; i < SequenceSetups.Count; i++)
-		//	{
-		//		var sequenceSetup = SequenceSetups[i];
-		//		if (sequenceSetup.TrackedSetup == trackedSetup)
-		//		{
-		//			return i;
-		//		}
-		//	}
-		//	return -1;
-		//}
-
-		//private int GetSequenceSetupIndex(ITrackedSetup<Times> trackedSetup)
-		//{
-		//	for (var i = 0; i < SequenceSetups.Count; i++)
-		//	{
-		//		var sequenceSetup = SequenceSetups[i];
-		//		if (sequenceSetup.TrackedSetup == trackedSetup)
-		//		{
-		//			return i;
-		//		}
-		//	}
-		//	return -1;
-		//}
 
 		private void ConfirmSequenceSetupSatisfied(ISequenceSetup<Times> sequenceSetup)
 		{
@@ -310,12 +252,54 @@ namespace Moq
 			}
 		}
 
+		private ISequenceSetup<Times> GetNextConsecutiveTrackedSetup(ISequenceSetup<Times> relativeTo)
+		{
+			var setupIndex = relativeTo.SetupIndex;
+			if(setupIndex == SequenceSetups.Count - 1)
+			{
+				return relativeTo.TrackedSetup.SequenceSetups.SingleOrDefault(s => s.SetupIndex == 0);
+			}
+			return relativeTo.TrackedSetup.SequenceSetups.SingleOrDefault(s => s.SetupIndex == setupIndex + 1);
+		}
+
+		private void AtLeastInvoked(ISequenceSetup<Times> sequenceSetup, int atLeast)
+		{
+			var nextConsecutiveTrackedSetup = GetNextConsecutiveTrackedSetup(sequenceSetup);
+			if (nextConsecutiveTrackedSetup != null && atLeast == sequenceSetup.ExecutionCount)
+			{
+				currentSequenceSetupIndex = nextConsecutiveTrackedSetup.SetupIndex;
+			}
+		}
+
+		private bool ConfirmAtMostNotExceeded(ISequenceSetup<Times> sequenceSetup, int atMost)
+		{
+			var nextConsecutiveTrackedSetup = GetNextConsecutiveTrackedSetup(sequenceSetup);
+			if (nextConsecutiveTrackedSetup != null && atMost == sequenceSetup.ExecutionCount)
+			{
+				currentSequenceSetupIndex = nextConsecutiveTrackedSetup.SetupIndex;
+				return true;
+			}
+			return sequenceSetup.Context.Validate(sequenceSetup.ExecutionCount);
+		}
+
+		private bool ConfirmExactTimesNotExceeded(ISequenceSetup<Times> sequenceSetup, int exactTimes)
+		{
+			var nextConsecutiveTrackedSetup = GetNextConsecutiveTrackedSetup(sequenceSetup);
+			if (nextConsecutiveTrackedSetup != null && exactTimes == sequenceSetup.ExecutionCount)
+			{
+				currentSequenceSetupIndex = nextConsecutiveTrackedSetup.SetupIndex;
+				return true;
+			}
+			return sequenceSetup.ExecutionCount <= exactTimes;
+		}
+
 		private void ConfirmSequenceSetup(ISequenceSetup<Times> sequenceSetup)
 		{
 			var times = sequenceSetup.Context;
-			times.Deconstruct(out int _, out int to);
+			times.Deconstruct(out int from, out int to);
 			var kind = times.GetKind();
 			sequenceSetup.ExecutionCount++;
+
 			var shouldThrow = false;
 			switch (kind)
 			{
@@ -324,18 +308,15 @@ namespace Moq
 					break;
 				case Times.Kind.Exactly:
 				case Times.Kind.Once:
-					if (times.Validate(sequenceSetup.ExecutionCount))
-					{
-						currentSequenceSetupIndex++;
-					}
+					shouldThrow = !ConfirmExactTimesNotExceeded(sequenceSetup, from);
 					break;
 				case Times.Kind.AtLeast:
 				case Times.Kind.AtLeastOnce:
-					// we do not shift
+					AtLeastInvoked(sequenceSetup, from);
 					break;
 				case Times.Kind.AtMost:
 				case Times.Kind.AtMostOnce:
-					shouldThrow = !times.Validate(sequenceSetup.ExecutionCount);
+					shouldThrow = !ConfirmAtMostNotExceeded(sequenceSetup, to);
 					break;
 				case Times.Kind.BetweenExclusive:
 				case Times.Kind.BetweenInclusive:

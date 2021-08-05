@@ -358,7 +358,7 @@ namespace Moq.Tests
 		[Fact]
 		public void MockSequenceShouldThrowIfNotCalledInOrder_OneTime()
 		{
-			Assert.Throws<SequenceException>(() =>
+			var exception = Assert.Throws<SequenceException>(() =>
 				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
 				{
 					mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
@@ -369,6 +369,8 @@ namespace Moq.Tests
 					mocked.Do(1);
 				})
 			);
+
+			Assert.Equal("Expected invocation on the mock once, but was 0 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
 		[Fact]
@@ -389,9 +391,9 @@ namespace Moq.Tests
 		}
 
 		[Fact]
-		public void MockSequenceShouldThrowIfNotCalledCorrectExactTimes()
+		public void MockSequenceShouldThrowIfCalledLessThanExactTimes()
 		{
-			Assert.Throws<SequenceException>(() =>
+			var exception = Assert.Throws<SequenceException>(() =>
 				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
 				{
 					mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Exactly(2));
@@ -402,6 +404,28 @@ namespace Moq.Tests
 					protectedMocked.InvokeProtectedDo(1);
 				})
 			);
+
+			Assert.Equal("Expected invocation on the mock exactly 2 times, but was 1 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+		}
+
+		[Fact]
+		public void MockSequenceShouldThrowIfCalledMoreThanExactTimes()
+		{
+			var exception = Assert.Throws<SequenceException>(() =>
+				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+				{
+					mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Exactly(2));
+					mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+				}, (mocked, protectedMocked) =>
+				{
+					mocked.Do(1);
+					mocked.Do(1);
+					mocked.Do(1);
+					
+				})
+			);
+			
+			Assert.Equal("Expected invocation on the mock exactly 2 times, but was 3 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
 		[Fact]
@@ -410,8 +434,6 @@ namespace Moq.Tests
 			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
 			{
 				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.AtLeast(2));
-				// this will never be hit !
-				// mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(2));
 				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)).Returns(1));
 			}, (mocked, protectedMocked) =>
 			{
@@ -440,7 +462,7 @@ namespace Moq.Tests
 		[Fact]
 		public void MockSequenceShouldThrowIfAtLeastTimesIsNotMet()
 		{
-			Assert.Throws<SequenceException>(() =>
+			var exception = Assert.Throws<SequenceException>(() =>
 				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
 				{
 					mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.AtLeast(2));
@@ -451,12 +473,32 @@ namespace Moq.Tests
 					protectedMocked.InvokeProtectedDo(1);
 				})
 			);
+
+			Assert.Equal("Expected invocation on the mock at least 2 times, but was 1 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
 		[Fact]
-		public void MockSequenceShouldThrowImmediatelyIfNeverCalled()
+		public void MockSequenceShouldMoveToNextConsecutiveSameTrackedSetupWhenAtLeastMet()
 		{
-			Assert.Throws<SequenceException>(() =>
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				// effectively AtLeast(3) with different returns
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.AtLeast(2));
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(2), Times.AtLeast(1));
+				mockSequence.Setup(() => mock.Setup(m => m.Do(2)).Returns(9));
+			}, (mocked, protectedMocked) =>
+			{
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(2, mocked.Do(1));
+				Assert.Equal(9, mocked.Do(2));
+			});
+		}
+
+		[Fact]
+		public void MockSequenceShouldThrowImmediatelyIfNeverSetupCalled()
+		{
+			var exception = Assert.Throws<SequenceException>(() =>
 				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
 				{
 					mockSequence.Setup(() => mock.Setup(m => m.Do(1)));
@@ -468,6 +510,8 @@ namespace Moq.Tests
 					mocked.Do(2);
 				})
 			);
+
+			Assert.Equal("Expected invocation on the mock should never have been performed, but was 1 times: MockSequenceFixture.IFoo m => m.Do(2)", exception.Message);
 		}
 
 		[Fact]
@@ -488,7 +532,7 @@ namespace Moq.Tests
 		[Fact]
 		public void MockSequenceShouldThrowImmediatelyIfInvokedMoreThanAtMost()
 		{
-			Assert.Throws<SequenceException>(() =>
+			var exception = Assert.Throws<SequenceException>(() =>
 				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
 				{
 					mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.AtMost(2));
@@ -500,11 +544,49 @@ namespace Moq.Tests
 					mocked.Do(1);
 				})
 			);
+
+			Assert.Equal("Expected invocation on the mock at most 2 times, but was 3 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
-		[Fact] // todo recap between logic Inclusive and Exclusive - Inclusive below 0, 1 or 2 times ?
+		[Fact]
+		public void MockSequenceShouldMoveToNextConsecutiveSameTrackedSetupWhenAtMostMet()
+		{
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				// effectively AtMost(3) with different returns
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.AtMost(2));
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(2), Times.AtMost(1));
+			}, (mocked, protectedMocked) =>
+			{
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(2, mocked.Do(1));
+				Assert.Throws<SequenceException>(() => mocked.Do(1));
+			});
+		}
+
+		[Fact]
 		public void MockSequenceShouldNotThrowIfBetweenInclusiveMet()
 		{
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.Between(0, 2, Range.Inclusive));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)).Returns(1));
+			}, (mocked, protectedMocked) =>
+			{
+				Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+			});
+
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.Between(0, 2, Range.Inclusive));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)).Returns(1));
+			}, (mocked, protectedMocked) =>
+			{
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+			});
+
 			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
 			{
 				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.Between(0, 2, Range.Inclusive));
@@ -520,7 +602,7 @@ namespace Moq.Tests
 		[Fact]
 		public void MockSequenceShouldThrowImmediatelyIfBetweenInclusiveTooManyInvocations()
 		{
-			Assert.Throws<SequenceException>(() =>
+			var exception = Assert.Throws<SequenceException>(() =>
 				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
 				{
 					mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Between(0, 2, Range.Inclusive));
@@ -532,12 +614,14 @@ namespace Moq.Tests
 					mocked.Do(1);
 				})
 			);
+
+			Assert.Equal("Expected invocation on the mock between 0 and 2 times (Inclusive), but was 3 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
 		[Fact]
 		public void MockSequenceShouldThrowIfBetweenInclusiveTooFewInvocations()
 		{
-			Assert.Throws<SequenceException>(() =>
+			var exception = Assert.Throws<SequenceException>(() =>
 				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
 				{
 					mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Between(1, 2, Range.Inclusive));
@@ -547,6 +631,93 @@ namespace Moq.Tests
 					protectedMocked.InvokeProtectedDo(1);
 				})
 			);
+
+			Assert.Equal("Expected invocation on the mock between 1 and 2 times (Inclusive), but was 0 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+		}
+
+		[Fact]
+		public void MockSequenceConsecutiveBetweenInclusiveOrExclusibeCanBeSpecifiedWithAtLeastThenAtMost()
+		{
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				//equivalent of BetweenInclusive(2,5)
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.AtLeast(2));
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(2), Times.AtMost(3));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)).Returns(1));
+			}, (mocked, protectedMocked) =>
+			{
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(2, mocked.Do(1));
+				Assert.Equal(2, mocked.Do(1));
+				Assert.Equal(2, mocked.Do(1));
+				Assert.Throws<SequenceException>(() => mocked.Do(1));
+				Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+			});
+		}
+
+		[Fact]
+		public void MockSequenceShouldNotThrowIfBetweenExclusiveMet()
+		{
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.Between(1, 4, Range.Exclusive));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)).Returns(1));
+			}, (mocked, protectedMocked) =>
+			{
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+			});
+
+			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+			{
+				mockSequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.Between(1, 4, Range.Exclusive));
+				mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)).Returns(1));
+			}, (mocked, protectedMocked) =>
+			{
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, mocked.Do(1));
+				Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+			});
+		}
+
+		[Fact]
+		public void MockSequenceShouldThrowImmediatelyIfBetweenExclusiveTooManyInvocations()
+		{
+			var exception = Assert.Throws<SequenceException>(() =>
+				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+				{
+					mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Between(1, 3, Range.Exclusive));
+					mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+				}, (mocked, protectedMocked) =>
+				{
+					mocked.Do(1);
+					mocked.Do(1);
+					mocked.Do(1);
+				})
+			);
+
+			Assert.Equal("Expected invocation on the mock between 1 and 3 times (Exclusive), but was 3 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+		}
+
+		[Fact]
+		public void MockSequenceShouldThrowIfBetweenExclusiveTooFewInvocations()
+		{
+			var exception = Assert.Throws<SequenceException>(() =>
+				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
+				{
+					mockSequence.Setup(() => mock.Setup(m => m.Do(1)), Times.Between(1, 3, Range.Exclusive));
+					mockSequence.Setup(() => protectedAs.Setup(p => p.ProtectedDo(1)));
+				}, (mocked, protectedMocked) =>
+				{
+					mocked.Do(1);
+					protectedMocked.InvokeProtectedDo(1);
+				})
+			);
+
+			Assert.Equal("Expected invocation on the mock between 1 and 3 times (Exclusive), but was 1 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
 		[Fact]
@@ -568,7 +739,7 @@ namespace Moq.Tests
 		[Fact]
 		public void MockSequenceWillThrowWhenSkipNonOptionalTimesSetups()
 		{
-			Assert.Throws<SequenceException>(() =>
+			var exception = Assert.Throws<SequenceException>(() =>
 			{
 				LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
 				{
@@ -582,6 +753,8 @@ namespace Moq.Tests
 					mocked.Do(2);
 				});
 			});
+
+			Assert.Equal("Expected invocation on the mock once, but was 0 times: MockSequenceFixture.Protected p => p.ProtectedDo(2)", exception.Message);
 		}
 
 		[Fact]
@@ -700,31 +873,46 @@ namespace Moq.Tests
 			mockSequence.Verify();
 		}
 
-		//[Fact]
-		//public void MockSequenceStrictShouldThrowIfCyclicInvocationAndNotCyclic()
-		//{
-		//	var mock = new Mock<IFoo>();
-		//	var mocked = mock.Object;
-		//	var sequence = new NewMockSequence(true, mock);
-		//	sequence.Setup(() => mock.Setup(m => m.Do(1)));
-		//	sequence.Setup(() => mock.Setup(m => m.Do(2)));
-		//	mocked.Do(1);
-		//	mocked.Do(2);
-		//	var exception = Assert.Throws<StrictSequenceException>(() => mocked.Do(1));
-		//}
+		[Fact]
+		public void MockSequenceStrictShouldThrowIfCyclicInvocationAndNotCyclic()
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
+			var sequence = new NewMockSequence(true, mock);
+			sequence.Setup(() => mock.Setup(m => m.Do(1)));
+			sequence.Setup(() => mock.Setup(m => m.Do(2)));
+			mocked.Do(1);
+			mocked.Do(2);
+			var exception = Assert.Throws<StrictSequenceException>(() => mocked.Do(1));
+			
+		}
 
-		//[Fact]
-		//public void MockSequenceLooseShouldNotThrowIfCyclicInvocationAndNotCyclic()
-		//{
-		//	var mock = new Mock<IFoo>();
-		//	var mocked = mock.Object;
-		//	var sequence = new NewMockSequence(false, mock);
-		//	sequence.Setup(() => mock.Setup(m => m.Do(1)));
-		//	sequence.Setup(() => mock.Setup(m => m.Do(2)));
-		//	mocked.Do(1);
-		//	mocked.Do(2);
-		//	mocked.Do(1);
-		//}
+		[Fact]
+		public void MockSequenceLooseShouldNotThrowIfCyclicInvocationAndNotCyclic()
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
+			var sequence = new NewMockSequence(false, mock);
+			sequence.Setup(() => mock.Setup(m => m.Do(1)));
+			sequence.Setup(() => mock.Setup(m => m.Do(2)));
+			mocked.Do(1);
+			mocked.Do(2);
+			mocked.Do(1);
+		}
+
+		[Fact]
+		public void MockSequenceWorksCycically()
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
+			var sequence = new NewMockSequence(true, mock) { Cyclical = true };
+			sequence.Setup(() => mock.Setup(m => m.Do(1)));
+			sequence.Setup(() => mock.Setup(m => m.Do(2)));
+			mocked.Do(1);
+			mocked.Do(2);
+			mocked.Do(1); // need to reset the invocations ! no still need to retain for verification
+			// also how does VerificationSetup work with cyclical !
+		}
 
 
 		internal class AMockSequence : MockSequenceBase<int>
@@ -737,11 +925,11 @@ namespace Moq.Tests
 				base.InterceptSetup(setup, setupCallback);
 			}
 
-			public List<(ISequenceSetup<int> trackedSetup, int executionOrder)> ConditionCalls = new List<(ISequenceSetup<int>, int)>();
+			public List<ISequenceSetup<int>> ConditionCalls = new List<ISequenceSetup<int>>();
 
-			protected override bool Condition(ISequenceSetup<int> trackedSetup, int invocationIndex)
+			protected override bool Condition(ISequenceSetup<int> trackedSetup)
 			{
-				ConditionCalls.Add((trackedSetup, invocationIndex));
+				ConditionCalls.Add(trackedSetup);
 				return true;
 			}
 

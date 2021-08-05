@@ -70,8 +70,6 @@ namespace Moq
 			InvocationShape = sequenceSetup.SetupInternal.Expectation;
 			sequenceSetup.TrackedSetup = this;
 		}
-		//internal readonly List<int> executionIndicesInternal = new List<int>();
-		//public IReadOnlyList<int> ExecutionIndices => executionIndicesInternal;
 		private readonly List<ISequenceSetup<TContext>> sequenceSetupsInternal = new List<ISequenceSetup<TContext>>();
 		internal void AddSequenceSetup(SequenceSetup<TContext> sequenceSetup)
 		{
@@ -132,7 +130,6 @@ namespace Moq
 		/// </summary>
 		protected readonly bool strict;
 		private int setupCount = -1;
-		private int executionCount = -1;
 		private readonly Mock[] mocks;
 		private readonly List<Mock> listenedToMocks = new List<Mock>();
 		private readonly List<TrackedSetup<TContext>> trackedSetups = new List<TrackedSetup<TContext>>();
@@ -244,13 +241,7 @@ namespace Moq
 				methodCall.SetCondition(
 					new Condition(() =>
 					{
-						var potentialSuccessIndex = executionCount + 1;
-						var success = Condition(sequenceSetup, potentialSuccessIndex);
-						if (success)
-						{
-							executionCount++;
-						}
-						return success;
+						return Condition(sequenceSetup);
 					},
 					() =>
 					{
@@ -290,9 +281,8 @@ namespace Moq
 		/// 
 		/// </summary>
 		/// <param name="sequenceSetup"></param>
-		/// <param name="invocationIndex"></param>
 		/// <returns></returns>
-		protected abstract bool Condition(ISequenceSetup<TContext> sequenceSetup, int invocationIndex);
+		protected abstract bool Condition(ISequenceSetup<TContext> sequenceSetup);
 
 		/// <summary>
 		/// 
