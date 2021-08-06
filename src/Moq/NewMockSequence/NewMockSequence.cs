@@ -11,6 +11,13 @@ namespace Moq
 	/// </summary>
 	public sealed class NewMockSequence : MockSequenceBase<CyclicalTimesSequenceSetup, CyclicalInvocationShapeSetups>
 	{
+		private int currentSequenceSetupIndex;
+		
+		/// <summary>
+		/// 
+		/// </summary>
+		public bool Cyclical { get; set; }
+
 		/// <summary>
 		/// 
 		/// </summary>
@@ -20,12 +27,6 @@ namespace Moq
 			return Times.Between(0, int.MaxValue, Range.Inclusive);
 		}
 
-		private int currentSequenceSetupIndex;
-
-		/// <summary>
-		/// 
-		/// </summary>
-		public bool Cyclical { get; set; }
 		/// <summary>
 		/// 
 		/// </summary>
@@ -50,36 +51,7 @@ namespace Moq
 			});
 			return verifiableSetup;
 		}
-
-		private void ResetForCyclical()
-		{
-			foreach(var sequenceSetup in SequenceSetups)
-			{
-				sequenceSetup.ResetForCyclical();
-			}
-		}
-
-		private bool SetupBeforeCurrentCondition(CyclicalTimesSequenceSetup newSequenceSetup)
-		{
-			if (Cyclical)
-			{
-				ConfirmRemainingSequenceSetupsSatisfied();
-				ResetForCyclical();
-				ConfirmPreviousSequenceSetupsSatisfied(newSequenceSetup.SetupIndex);
-				currentSequenceSetupIndex = newSequenceSetup.SetupIndex;
-				CurrentSequenceSetupInvoked();
-			}
-			else
-			{
-				if (strict) // to be determined
-				{
-					throw new StrictSequenceException() { UnmatchedSequenceInvocations = UnmatchedInvocations() };
-				}
-			}
-
-			return true;
-		}
-
+		
 		/// <summary>
 		/// 
 		/// </summary>
@@ -127,51 +99,6 @@ namespace Moq
 			return condition;
 		}
 
-		private void ConfirmSequenceSetupSatisfied(CyclicalTimesSequenceSetup sequenceSetup)
-		{
-			var times = sequenceSetup.Times;
-			var kind = times.GetKind();
-			switch (kind)
-			{
-				case Times.Kind.Never:
-				case Times.Kind.AtMost:
-				case Times.Kind.AtMostOnce:
-					break;
-				case Times.Kind.Exactly:
-				case Times.Kind.Once:
-				case Times.Kind.BetweenExclusive:
-				case Times.Kind.BetweenInclusive:
-				case Times.Kind.AtLeast:
-				case Times.Kind.AtLeastOnce:
-					if (!times.Validate(sequenceSetup.ExecutionCount))
-					{
-						throw new SequenceException(times,sequenceSetup.ExecutionCount,sequenceSetup.Setup);
-					}
-					break;
-			}
-		}
-		
-		private void ConfirmPreviousSequenceSetupsSatisfied(int upToIndex)
-		{
-			for (var i = 0; i < upToIndex; i++)
-			{
-				ConfirmSequenceSetupSatisfied(SequenceSetups[i]);
-			}
-		}
-
-		private void ConfirmSequenceSetupsSatisfiedFromCurrentToExclusive(int upToIndex)
-		{
-			for (var i = currentSequenceSetupIndex + 1; i < upToIndex; i++)
-			{
-				ConfirmSequenceSetupSatisfied(SequenceSetups[i]);
-			}
-		}
-
-		private void ConfirmRemainingSequenceSetupsSatisfied()
-		{
-			ConfirmSequenceSetupsSatisfiedFromCurrentToExclusive(SequenceSetups.Count);
-		}
-		
 		private void CurrentSequenceSetupInvoked()
 		{
 			var currentSequenceSetup = SequenceSetups[currentSequenceSetupIndex];
@@ -181,7 +108,7 @@ namespace Moq
 			times.Deconstruct(out int from, out int to);
 			var kind = times.GetKind();
 
-			ThrowForBadTimes(times, from , to, currentSequenceSetup);
+			ThrowForBadTimes(times, from, to, currentSequenceSetup);
 			TryMoveToConsecutiveForApplicableTimes(kind, from, to, currentSequenceSetup);
 		}
 
@@ -220,7 +147,7 @@ namespace Moq
 			}
 		}
 
-		private void TryMoveToConsecutiveForApplicableTimes(Times.Kind kind,int from, int to, CyclicalTimesSequenceSetup sequenceSetup)
+		private void TryMoveToConsecutiveForApplicableTimes(Times.Kind kind, int from, int to, CyclicalTimesSequenceSetup sequenceSetup)
 		{
 			var shouldTryMoveToConsecutive = false;
 			var executionCount = sequenceSetup.ExecutionCount;
@@ -257,6 +184,80 @@ namespace Moq
 				return true;
 			}
 			return false;
+		}
+
+		private void ConfirmSequenceSetupSatisfied(CyclicalTimesSequenceSetup sequenceSetup)
+		{
+			var times = sequenceSetup.Times;
+			var kind = times.GetKind();
+			switch (kind)
+			{
+				case Times.Kind.Never:
+				case Times.Kind.AtMost:
+				case Times.Kind.AtMostOnce:
+					break;
+				case Times.Kind.Exactly:
+				case Times.Kind.Once:
+				case Times.Kind.BetweenExclusive:
+				case Times.Kind.BetweenInclusive:
+				case Times.Kind.AtLeast:
+				case Times.Kind.AtLeastOnce:
+					if (!times.Validate(sequenceSetup.ExecutionCount))
+					{
+						throw new SequenceException(times,sequenceSetup.ExecutionCount,sequenceSetup.Setup);
+					}
+					break;
+			}
+		}
+
+		private void ConfirmSequenceSetupsSatisfiedFromCurrentToExclusive(int upToIndex)
+		{
+			for (var i = currentSequenceSetupIndex + 1; i < upToIndex; i++)
+			{
+				ConfirmSequenceSetupSatisfied(SequenceSetups[i]);
+			}
+		}
+
+		private bool SetupBeforeCurrentCondition(CyclicalTimesSequenceSetup newSequenceSetup)
+		{
+			if (Cyclical)
+			{
+				ConfirmRemainingSequenceSetupsSatisfied();
+				ResetForCyclical();
+				ConfirmPreviousSequenceSetupsSatisfied(newSequenceSetup.SetupIndex);
+				currentSequenceSetupIndex = newSequenceSetup.SetupIndex;
+				CurrentSequenceSetupInvoked();
+			}
+			else
+			{
+				if (strict) // to be determined
+				{
+					throw new StrictSequenceException() { UnmatchedSequenceInvocations = UnmatchedInvocations() };
+				}
+			}
+
+			return true;
+		}
+
+		private void ConfirmRemainingSequenceSetupsSatisfied()
+		{
+			ConfirmSequenceSetupsSatisfiedFromCurrentToExclusive(SequenceSetups.Count);
+		}
+
+		private void ConfirmPreviousSequenceSetupsSatisfied(int upToIndex)
+		{
+			for (var i = 0; i < upToIndex; i++)
+			{
+				ConfirmSequenceSetupSatisfied(SequenceSetups[i]);
+			}
+		}
+		
+		private void ResetForCyclical()
+		{
+			foreach (var sequenceSetup in SequenceSetups)
+			{
+				sequenceSetup.ResetForCyclical();
+			}
 		}
 
 		/// <summary>
