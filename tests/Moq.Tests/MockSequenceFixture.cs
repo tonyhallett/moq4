@@ -118,200 +118,180 @@ namespace Moq.Tests
 			Assert.Throws<MockException>(() => a.Object.Do(200));
 		}
 
-		//[Fact]
-		//public void MockSequenceBaseShouldThrowIfNoMocksInConstructor()
-		//{
-		//	var exception = Assert.Throws<ArgumentException>(() => new AMockSequence(false));
-		//	Assert.StartsWith("No mocks", exception.Message);
-		//}
+		[Fact]
+		public void MockSequenceBaseShouldThrowIfNoMocksInConstructor()
+		{
+			var exception = Assert.Throws<ArgumentException>(() => new AMockSequence(false));
+			Assert.StartsWith("No mocks", exception.Message);
+		}
 
-		//[Fact]
-		//public void MockSequenceBaseShouldThrowIfSetupDoesNotSetup()
-		//{
-		//	var mock = new Mock<IFoo>();
-		//	var sequence = new AMockSequence(false, mock);
-		//	var exception = Assert.Throws<ArgumentException>(() => sequence.Setup(() => { },_ => 1));
-		//	Assert.StartsWith("No setup performed", exception.Message);
-		//}
+		[Fact]
+		public void MockSequenceBaseShouldThrowIfSetupDoesNotSetup()
+		{
+			var mock = new Mock<IFoo>();
+			var sequence = new AMockSequence(false, mock);
+			var exception = Assert.Throws<ArgumentException>(() => sequence.Setup(() => { },s => { }));
+			Assert.StartsWith("No setup performed", exception.Message);
+		}
 
-		//[Fact]
-		//public void MockSequenceBaseFindsSetupsFromActions()
-		//{
-		//	var contextCounter = 0;
-		//	var mock = new Mock<IFoo>();
-		//	var nestedMock = new Mock<IHaveNested>();
-		//	var aMockSequence = new AMockSequence(false,mock, nestedMock);
-		//	ITrackedSetup<int> trackedSetup = null;
-		//	int order = -1;
-		//	Func<ISequenceSetup<int>, int> callback = (sequenceSetup) =>
-		//	 {
-		//		 trackedSetup = sequenceSetup.TrackedSetup;
-		//		 order = sequenceSetup.SetupIndex;
-		//		 return contextCounter++;
-		//	 };
-		//	aMockSequence.Setup(() => mock.Setup(f => f.Do(1)), callback);
-		//	Assert.Equal(0, order);
-		//	Assert.Equal("MockSequenceFixture.IFoo f => f.Do(1)", trackedSetup.Setup.ToString());
-		//	var sequenceSetups = trackedSetup.SequenceSetups;
-		//	var sequenceSetup = sequenceSetups[0];
-		//	Assert.Single(sequenceSetups);
-		//	Assert.Equal(contextCounter - 1, sequenceSetup.Context);
-		//	Assert.Equal(order, sequenceSetup.SetupIndex);
-		//	var repeatedSetup = trackedSetup;
-		//	var allTrackedSetups = aMockSequence.GetAllTrackedSetups();
-		//	var trackedSetups = aMockSequence.GetTrackedSetups();
-		//	Assert.Single(allTrackedSetups);
-		//	Assert.Single(trackedSetups);
-		//	Assert.Same(trackedSetup, allTrackedSetups[0]);
-		//	Assert.Same(trackedSetup, trackedSetups[0]);
-
-		//	aMockSequence.Setup(() =>
-		//	{
-		//		nestedMock.Setup(n => n.ReturnNested(1).DoNested(1));
-		//	}, callback);
-		//	Assert.Equal(1, order);
-		//	Assert.Equal("MockSequenceFixture.INested ... => ....DoNested(1)", trackedSetup.Setup.ToString());
-		//	Assert.Equal(3, allTrackedSetups.Count);
-		//	Assert.Equal(2, trackedSetups.Count);
-		//	Assert.Contains(trackedSetup, allTrackedSetups);
-		//	Assert.Same(trackedSetup, trackedSetups[1]);
-
-		//	// repeatedSetup
-		//	aMockSequence.Setup(() => mock.Setup(f => f.Do(1)), callback);
-		//	Assert.Equal(2, order);
-		//	Assert.Equal(3, allTrackedSetups.Count);
-		//	Assert.Equal(2, trackedSetups.Count);
-		//	Assert.Same(repeatedSetup, trackedSetup);
-		//	sequenceSetups = trackedSetup.SequenceSetups;
-		//	Assert.Equal(2, sequenceSetups.Count);
-		//	Assert.Same(sequenceSetup, sequenceSetups[0]);
-		//	sequenceSetup = sequenceSetups[1];
-		//	Assert.Equal(contextCounter - 1, sequenceSetup.Context);
-		//	Assert.Equal(order, sequenceSetup.SetupIndex);
-
-		//}
-
-		//[Fact]
-		//public void MockSequenceBaseInvokesConditionWithTrackedSetupAndExecutionIndex()
-		//{
-		//	var mock = new Mock<IFoo>();
-		//	var aMockSequence = new AMockSequence(false,mock);
-		//	aMockSequence.Setup(() => mock.Setup(f => f.Do(1)), (sequenceSetup) => sequenceSetup.SetupIndex);
-		//	mock.Object.Do(1);
-		//	Assert.Single(aMockSequence.ConditionCalls);
-		//	var conditionCall = aMockSequence.ConditionCalls[0];
-		//	Assert.Equal(0,conditionCall.executionOrder);
-		//	var trackedSetup = conditionCall.trackedSetup;
-		//	Assert.Equal("MockSequenceFixture.IFoo f => f.Do(1)", trackedSetup.Setup.ToString());
-		//	var sequenceSetup = trackedSetup.SequenceSetups[0];
-		//	Assert.Equal(0, sequenceSetup.SetupIndex);
-		//	Assert.Equal(0, sequenceSetup.Context);
-		//}
-
-		//[Fact]
-		//public void MockSequenceBaseShouldCaptureInvocations()
-		//{
-		//	var mock = new Mock<IFoo>();
-		//	var nestedMock = new Mock<IHaveNested>();
-		//	// listening from non sequence setups works if done before hand.... 
-		//	// but it does not update after....
-		//	nestedMock.Setup(n => n.ReturnNested(1).DoNested(2)).Returns(1);
-		//	var aMockSequence = new AMockSequence(false, mock, nestedMock);
-
-		//	mock.Object.Do(1);
-		//	Assert.Single(aMockSequence.sequenceInvocations);
-
-		//	nestedMock.Object.ReturnNested(1).DoNested(1);
-		//	Assert.Equal(3, aMockSequence.sequenceInvocations.Count);
-
-		//}
-
-		//[Fact]
-		//public void MockSequenceBaseTracksExecutionIndices()
-		//{
-		//	var mock = new Mock<IFoo>();
-		//	var mocked = mock.Object;
-		//	var aMockSequence = new AMockSequence(false, mock);
-		//	IReadOnlyList<int> executionIndices1 = null;
-		//	aMockSequence.Setup(() => mock.Setup(m => m.Do(1)), (sequenceSetup) =>
-		//	 {
-		//		 executionIndices1 = sequenceSetup.TrackedSetup.ExecutionIndices;
-		//		 return 1;
-		//	 });
-		//	IReadOnlyList<int> executionIndices2 = null;
-		//	aMockSequence.Setup(() => mock.Setup(m => m.Do(2)), (sequenceSetup) =>
-		//	{
-		//		executionIndices2 = sequenceSetup.TrackedSetup.ExecutionIndices;
-		//		return 2;
-		//	});
-
-		//	Assert.Empty(executionIndices1);
-		//	Assert.Empty(executionIndices2);
-
-		//	mocked.Do(3);
-		//	Assert.Empty(executionIndices1);
-		//	Assert.Empty(executionIndices2);
-
-		//	mocked.Do(1);
-		//	Assert.Single(executionIndices1);
-		//	Assert.Equal(0, executionIndices1[0]);
-		//	Assert.Empty(executionIndices2);
-
-		//	mocked.Do(2);
-		//	mocked.Do(1);
-		//	Assert.Equal(2, executionIndices1.Count);
-		//	Assert.Equal(2, executionIndices1[1]);
-		//	Assert.Single(executionIndices2);
-		//	Assert.Equal(1, executionIndices2[0]);
+		[Fact]
+		public void MockSequenceBaseFindsSetupsFromActions()
+		{
+			var mock = new Mock<IFoo>();
+			var nestedMock = new Mock<IHaveNested>();
+			var aMockSequence = new AMockSequence(false, mock, nestedMock);
+			DefaultInvocationShapeSetups invocationShapeSetups = null;
+			DefaultSequenceSetup sequenceSetupFromAction = null;
+			int setupIndex = -1;
+			Action<DefaultSequenceSetup> callback = (sequenceSetup) =>
+			 {
+				 sequenceSetupFromAction = sequenceSetup;
+				 invocationShapeSetups = sequenceSetup.InvocationShapeSetups;
+				 setupIndex = sequenceSetup.SetupIndex;
+			 };
+			aMockSequence.Setup(() => mock.Setup(f => f.Do(1)), callback);
+			Assert.Equal(0, setupIndex);
+			Assert.Equal("MockSequenceFixture.IFoo f => f.Do(1)", sequenceSetupFromAction.Setup.ToString());
+			var commonSequenceSetups = invocationShapeSetups.GetSequenceSetups();
+			Assert.Single(commonSequenceSetups);
+			Assert.Same(sequenceSetupFromAction, commonSequenceSetups[0]);
 
 
-		//}
+			var repeatedInvocationShapeSetups = invocationShapeSetups;
 
-		//[Fact]
-		//public void MockSequenceBaseCanCheckInvocationsAgainstSequenceSetups()
-		//{
-		//	var mock = new Mock<IFoo>();
-		//	var aMockSequence = new AMockSequence(false,mock);
-		//	mock.Setup(m => m.Do(1));
-		//	mock.Object.Do(1);
-		//	Assert.Single(aMockSequence.sequenceInvocations);
-		//	Assert.False(aMockSequence.InvocationsHaveMatchingSetups());
+			// callback for terminal setups
+			aMockSequence.Setup(() =>
+			{
+				nestedMock.Setup(n => n.ReturnNested(1).DoNested(1));
+			}, callback);
+			Assert.Equal(1, setupIndex);
+			Assert.Equal("MockSequenceFixture.INested ... => ....DoNested(1)", sequenceSetupFromAction.Setup.ToString());
+			// captures all setups
+			Assert.Equal(3, aMockSequence.AllSetups.Count);
+			var sequenceSetups = aMockSequence.GetSequenceSetups();
+			Assert.Equal(2, sequenceSetups.Count);
+			Assert.Same(sequenceSetupFromAction, sequenceSetups[1]);
+			Assert.NotSame(repeatedInvocationShapeSetups, invocationShapeSetups);
 
-		//	aMockSequence = new AMockSequence(false, mock);
-		//	aMockSequence.Setup(() => mock.Setup(m => m.Do(2)), sequenceSetup => sequenceSetup.SetupIndex);
-		//	mock.Object.Do(2);
-		//	Assert.Single(aMockSequence.sequenceInvocations);
-		//	Assert.True(aMockSequence.InvocationsHaveMatchingSetups());
+			//repeatedSetup
+			aMockSequence.Setup(() => mock.Setup(f => f.Do(1)), callback);
+			Assert.Equal(2, setupIndex);
+			Assert.Same(repeatedInvocationShapeSetups, invocationShapeSetups);
+			Assert.Same(sequenceSetupFromAction, invocationShapeSetups.GetSequenceSetups()[1]);
 
-		//}
+		}
 
-		//[Fact]
-		//public void MockSequenceBaseStrictInvokesStrictnessFailureForUnmatchedInvocations()
-		//{
-		//	var mock = new Mock<IFoo>();
-		//	var aMockSequence = new AMockSequence(true, mock);
-		//	aMockSequence.Setup(() => mock.Setup(m => m.Do(2)), sequenceSetup => sequenceSetup.SetupIndex);
+		[Fact]
+		public void MockSequenceFindsProtectedAsMockSetups()
+		{
+			var mock = new Mock<Protected>();
+			var protectedAsMock = mock.Protected().As<ProtectedLike>();
+			var aMockSequence = new AMockSequence(false, mock);
+			DefaultSequenceSetup sequenceSetup = null;
+			aMockSequence.Setup(() => protectedAsMock.Setup(m => m.ProtectedDo(1)), s => sequenceSetup = s);
+			var x = sequenceSetup.Setup.ToString();
+			Assert.Equal("MockSequenceFixture.Protected m => m.ProtectedDo(1)", sequenceSetup.Setup.ToString());
+		}
 
-		//	mock.Object.Do(1);
-		//	Assert.False(aMockSequence.StrictFailure);
+		[Fact]
+		public void MockSequenceBaseInvokesConditionWithSequenceSetupDerivation()
+		{
+			var mock = new Mock<IFoo>();
+			var aMockSequence = new AMockSequence(false, mock);
+			aMockSequence.Setup(() => mock.Setup(f => f.Do(1)), (sequenceSetup) => { });
+			mock.Object.Do(1);
+			Assert.Single(aMockSequence.ConditionSequenceSetups);
+			var conditionSequenceSetup = aMockSequence.ConditionSequenceSetups[0];
+			Assert.IsType<DefaultSequenceSetup>(conditionSequenceSetup);
+			Assert.Equal("MockSequenceFixture.IFoo f => f.Do(1)", conditionSequenceSetup.Setup.ToString());
+			
+			Assert.Equal(0, conditionSequenceSetup.SetupIndex);
+			var defaultInvocationShapesSetups = conditionSequenceSetup.InvocationShapeSetupsObject as DefaultInvocationShapeSetups;
+			var sequenceSetups = defaultInvocationShapesSetups.GetSequenceSetups();
+			Assert.Single(sequenceSetups);
+			Assert.Same(conditionSequenceSetup, sequenceSetups[0]);
+		}
 
-		//	// strictness test occurs when condition returns true
-		//	mock.Object.Do(2);
-		//	Assert.True(aMockSequence.StrictFailure);
-		//}
+		[Fact]
+		public void MockSequenceBaseShouldReturnTheConditionReturnValueForTheActualCondition()
+		{
+			var mock = new Mock<IFoo>();
+			var mockSequence = new AMockSequence(false, mock);
+			DefaultSequenceSetup setup = null;
+			mockSequence.Setup(() => mock.Setup(m => m.Do(1)), _setup => setup = _setup);
+			var methodCall = setup.SetupInternal as MethodCall;
 
-		//[Fact]
-		//public void MockSequenceBaseStrictThrowsStrictSequenceExceptionForUnmatchedInvocations()
-		//{
-		//	var mock = new Mock<IFoo>();
-		//	var aMockSequence = new AMockSequence(true, mock);
-		//	aMockSequence.CallBaseForStrictFailure = true;
-		//	aMockSequence.Setup(() => mock.Setup(m => m.Do(2)), sequenceSetup => sequenceSetup.SetupIndex);
-		//	mock.Object.Do(1);
+			Assert.True(methodCall.Condition.IsTrue);
+			Assert.Same(setup, mockSequence.ConditionSequenceSetups[0]);
 
-		//	// strictness test occurs when condition returns true
-		//	Assert.Throws<StrictSequenceException>(() => mock.Object.Do(2));
-		//}
+			mockSequence.ConditionReturn = false;
+			Assert.False(methodCall.Condition.IsTrue);
+			Assert.Same(setup, mockSequence.ConditionSequenceSetups[1]);
+		}
+
+		[Fact]
+		public void MockSequenceBaseShouldCaptureInvocations()
+		{
+			var mock = new Mock<IFoo>();
+			var nestedMock = new Mock<IHaveNested>();
+			// listening from non sequence setups works if done before hand.... 
+			// but it does not update after....
+			nestedMock.Setup(n => n.ReturnNested(1).DoNested(2)).Returns(1);
+			var aMockSequence = new AMockSequence(false, mock, nestedMock);
+
+			mock.Object.Do(1);
+			Assert.Single(aMockSequence.SequenceInvocations);
+
+			nestedMock.Object.ReturnNested(1).DoNested(1);
+			Assert.Equal(3, aMockSequence.SequenceInvocations.Count);
+
+		}
+
+		[Fact]
+		public void MockSequenceBaseCanCheckInvocationsAgainstSequenceSetups()
+		{
+			var mock = new Mock<IFoo>();
+			var aMockSequence = new AMockSequence(false, mock);
+			mock.Setup(m => m.Do(1));
+			mock.Object.Do(1);
+			Assert.Single(aMockSequence.SequenceInvocations);
+			Assert.False(aMockSequence.InvocationsHaveMatchingSetups());
+
+			aMockSequence = new AMockSequence(false, mock);
+			aMockSequence.Setup(() => mock.Setup(m => m.Do(2)), sequenceSetup => { });
+			mock.Object.Do(2);
+			Assert.Single(aMockSequence.SequenceInvocations);
+			Assert.True(aMockSequence.InvocationsHaveMatchingSetups());
+
+		}
+
+		[Fact]
+		public void MockSequenceBaseStrictInvokesStrictnessFailureForUnmatchedInvocations()
+		{
+			var mock = new Mock<IFoo>();
+			var aMockSequence = new AMockSequence(true, mock);
+			aMockSequence.Setup(() => mock.Setup(m => m.Do(2)), sequenceSetup => { });
+
+			mock.Object.Do(1);
+			Assert.False(aMockSequence.StrictFailure);
+
+			// strictness test occurs when condition returns true
+			mock.Object.Do(2);
+			Assert.True(aMockSequence.StrictFailure);
+		}
+
+		[Fact]
+		public void MockSequenceBaseStrictThrowsStrictSequenceExceptionForUnmatchedInvocations()
+		{
+			var mock = new Mock<IFoo>();
+			var aMockSequence = new AMockSequence(true, mock);
+			aMockSequence.CallBaseForStrictFailure = true;
+			aMockSequence.Setup(() => mock.Setup(m => m.Do(2)), sequenceSetup => { });
+			mock.Object.Do(1);
+
+			// strictness test occurs when condition returns true
+			Assert.Throws<StrictSequenceException>(() => mock.Object.Do(2));
+		}
 
 		private void LooseNewMockSequenceTestBase(Action<Mock<IFoo>, IProtectedAsMock<Protected, ProtectedLike>, NewMockSequence> setupSequence, Action<IFoo, Protected> act)
 		{
@@ -478,7 +458,7 @@ namespace Moq.Tests
 		}
 
 		[Fact]
-		public void MockSequenceShouldMoveToNextConsecutiveSameTrackedSetupWhenAtLeastMet()
+		public void MockSequenceShouldMoveToNextConsecutiveInvocationShapeSetupWhenAtLeastMet()
 		{
 			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
 			{
@@ -549,7 +529,7 @@ namespace Moq.Tests
 		}
 
 		[Fact]
-		public void MockSequenceShouldMoveToNextConsecutiveSameTrackedSetupWhenAtMostMet()
+		public void MockSequenceShouldMoveToNextConsecutiveInvocationShapeSetupWhenAtMostMet()
 		{
 			LooseNewMockSequenceTestBase((mock, protectedAs, mockSequence) =>
 			{
@@ -903,71 +883,300 @@ namespace Moq.Tests
 		}
 
 		[Fact]
-		public void MockSequenceWorksCyclically()
+		public void MockSequenceWorksCyclical_OneTime()
 		{
 			var mock = new Mock<IFoo>();
 			var mocked = mock.Object;
+			var protectedMock = new Mock<Protected>();
+			var protectedAsMock = protectedMock.Protected().As<ProtectedLike>();
+			var protectedMocked = protectedMock.Object;
+			var sequence = new NewMockSequence(true, mock, protectedMock) { Cyclical = true };
+			sequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1));
+			sequence.Setup(() => protectedAsMock.Setup(m => m.ProtectedDo(2)).Returns(2));
+			Assert.Equal(1,mocked.Do(1));
+			Assert.Equal(2, protectedMocked.InvokeProtectedDo(2));
+			Assert.Equal(1, mocked.Do(1));
+			Assert.Equal(2, protectedMocked.InvokeProtectedDo(2));
+		}
+
+		[Fact]
+		public void MockSequenceWorksCyclicalWithSeparatedCommonSetups()
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
+			var protectedMock = new Mock<Protected>();
+			var protectedAsMock = protectedMock.Protected().As<ProtectedLike>();
+			var protectedMocked = protectedMock.Object;
+
+			var sequence = new NewMockSequence(true, mock, protectedMock) { Cyclical = true };
+			sequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1));
+			sequence.Setup(() => protectedAsMock.Setup(m => m.ProtectedDo(1)).Returns(1));
+			sequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(2));
+			sequence.Setup(() => protectedAsMock.Setup(m => m.ProtectedDo(2)).Returns(2));
+
+			Assert.Equal(1, mocked.Do(1));
+			Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+			Assert.Equal(2, mocked.Do(1));
+			Assert.Equal(2, protectedMocked.InvokeProtectedDo(2));
+			Assert.Equal(1, mocked.Do(1));
+			Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+			Assert.Equal(2, mocked.Do(1));
+			Assert.Equal(2, protectedMocked.InvokeProtectedDo(2));
+		}
+
+		[Fact]
+		public void MockSequenceWorksCyclicalWithAdjacentCommonSetups()
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
+			var protectedMock = new Mock<Protected>();
+			var protectedAsMock = protectedMock.Protected().As<ProtectedLike>();
+			var protectedMocked = protectedMock.Object;
+
+			var sequence = new NewMockSequence(true, mock, protectedMock) { Cyclical = true };
+			sequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1));
+			sequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(2));
+			sequence.Setup(() => protectedAsMock.Setup(m => m.ProtectedDo(1)).Returns(1));
+
+			Assert.Equal(1, mocked.Do(1));
+			Assert.Equal(2, mocked.Do(1));
+			Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+			Assert.Equal(1, mocked.Do(1));
+			Assert.Equal(2, mocked.Do(1));
+			Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+		}
+
+		[Fact]
+		public void MockSequenceWorksCyclicalWithAdjacentStartEnd()
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
+			var protectedMock = new Mock<Protected>();
+			var protectedAsMock = protectedMock.Protected().As<ProtectedLike>();
+			var protectedMocked = protectedMock.Object;
+
+			var sequence = new NewMockSequence(true, mock, protectedMock) { Cyclical = true };
+			sequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1));
+			sequence.Setup(() => protectedAsMock.Setup(m => m.ProtectedDo(1)).Returns(1));
+			sequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(2));
+
+			Assert.Equal(1, mocked.Do(1));
+			Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+			Assert.Equal(2, mocked.Do(1));
+			Assert.Equal(1, mocked.Do(1));
+			Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+			Assert.Equal(2, mocked.Do(1));
+		}
+
+		[Fact]
+		public void MockSequenceWorksCyclicalWithAdjacentStartEndExactTimesMoreThanOnce()
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
+			var protectedMock = new Mock<Protected>();
+			var protectedAsMock = protectedMock.Protected().As<ProtectedLike>();
+			var protectedMocked = protectedMock.Object;
+
+			var sequence = new NewMockSequence(true, mock, protectedMock) { Cyclical = true };
+			sequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1));
+			sequence.Setup(() => protectedAsMock.Setup(m => m.ProtectedDo(1)).Returns(1));
+			sequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(2), Times.Exactly(2));
+
+			Assert.Equal(1, mocked.Do(1));
+			Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+			Assert.Equal(2, mocked.Do(1));
+			Assert.Equal(2, mocked.Do(1));
+			Assert.Equal(1, mocked.Do(1));
+			Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
+			Assert.Equal(2, mocked.Do(1));
+			Assert.Equal(2, mocked.Do(1));
+		}
+
+		[Fact]
+		public void MockSequenceCyclicalBeforeCurrentAfterBeginningShouldThrowIfNotOptional()
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
+
 			var sequence = new NewMockSequence(true, mock) { Cyclical = true };
-			sequence.Setup(() => mock.Setup(m => m.Do(1)));
-			sequence.Setup(() => mock.Setup(m => m.Do(2)));
+			sequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1));
+			sequence.Setup(() => mock.Setup(m => m.Do(2)).Returns(2));
+			sequence.Setup(() => mock.Setup(m => m.Do(3)).Returns(3));
+
+			Assert.Equal(1, mocked.Do(1));
+			Assert.Equal(2, mocked.Do(2));
+			Assert.Equal(3, mocked.Do(3));
+
+			var exception = Assert.Throws<SequenceException>(() => Assert.Equal(2, mocked.Do(2)));
+			Assert.Equal("Expected invocation on the mock once, but was 0 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+		}
+
+		[Fact]
+		public void VerifiableSetupHasCyclicalExecutionCount()
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
+
+			var sequence = new NewMockSequence(true, mock) { Cyclical = true };
+			var verifiableSequence1 = sequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1),Times.AtMost(2));
+			var verifiableSequence2 = sequence.Setup(() => mock.Setup(m => m.Do(2)).Returns(2));
+
+			Assert.Equal(1, mocked.Do(1));
+			Assert.Equal(1, mocked.Do(1));
+
+			Assert.Equal(new List<int> { 2 }, verifiableSequence1.CyclicalExecutionCount);
+			Assert.Equal(new List<int> { 0 }, verifiableSequence2.CyclicalExecutionCount);
+
+			Assert.Equal(2, mocked.Do(2));
+			Assert.Equal(1, mocked.Do(1));
+
+			Assert.Equal(new List<int> { 2, 1 }, verifiableSequence1.CyclicalExecutionCount);
+			Assert.Equal(new List<int> { 1, 0 }, verifiableSequence2.CyclicalExecutionCount);
+		}
+
+		[Fact]
+		public void VerifiableSetupVerifyCyclicalNumberWillThrowIfDifferentCycles()
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
+
+			var sequence = new NewMockSequence(true, mock) { Cyclical = true };
+			var verifiableSequence1 = sequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.AtMost(2));
+			var verifiableSequence2 = sequence.Setup(() => mock.Setup(m => m.Do(2)).Returns(2));
+
+			verifiableSequence1.VerifyCyclical(new List<int> { 0 });
+			var exception = Assert.Throws<SequenceException>(() => verifiableSequence1.VerifyCyclical(new List<int> { 0, 0 }));
+			Assert.Equal("Expected cycles 2 but was 1", exception.Message);
+		}
+	
+
+		[Fact]
+		public void VerifiableSetupVerifyCyclicalTimesWillThrowIfDifferentCycles()
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
+
+			var sequence = new NewMockSequence(true, mock) { Cyclical = true };
+			var verifiableSequence1 = sequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.AtMost(2));
+			var verifiableSequence2 = sequence.Setup(() => mock.Setup(m => m.Do(2)).Returns(2));
+
+			var exception = Assert.Throws<SequenceException>(() => verifiableSequence1.VerifyCyclical(new List<Times> { Times.Once(),Times.Once(), Times.Once() }));
+			Assert.Equal("Expected cycles 3 but was 1", exception.Message);
+		}
+
+		[Fact]
+		public void VerifiableSetupVerifyCyclicalNumberWillThrowIfDiffers()
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
+
+			var sequence = new NewMockSequence(true, mock) { Cyclical = true };
+			var verifiableSequence1 = sequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.AtMost(2));
+			var verifiableSequence2 = sequence.Setup(() => mock.Setup(m => m.Do(2)).Returns(2));
+
+			mocked.Do(1);
+
+			var exception = Assert.Throws<SequenceException>(() => verifiableSequence1.VerifyCyclical(new List<int> { 2 }));
+			Assert.Equal("On cycle 0. Expected invocation on the mock exactly 2 times, but was 1 times: ", exception.Message);
+		}
+
+		[Fact]
+		public void VerifiableSetupVerifyCyclicalTimesWillThrowIfDiffers()
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
+
+			var sequence = new NewMockSequence(true, mock) { Cyclical = true };
+			var verifiableSequence1 = sequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.AtMost(2));
+			var verifiableSequence2 = sequence.Setup(() => mock.Setup(m => m.Do(2)).Returns(2));
+
 			mocked.Do(1);
 			mocked.Do(2);
 			mocked.Do(1);
+
+			var exception = Assert.Throws<SequenceException>(() => verifiableSequence1.VerifyCyclical(new List<Times> { Times.Once(), Times.Exactly(2)}));
+			Assert.Equal("On cycle 1. Expected invocation on the mock exactly 2 times, but was 1 times: ", exception.Message);
 		}
 
+		[Fact]
+		public void VerifySetupVerifyWithTimesNumberCanBeUsedForCyclical()
+		{
+			var mock = new Mock<IFoo>();
+			var mocked = mock.Object;
 
-		//internal class AMockSequence : MockSequenceBase<int>
-		//{
-		//	public bool StrictFailure { get; set; }
-		//	public bool CallBaseForStrictFailure { get; set; }
-		//	public AMockSequence(bool strict, params Mock[] mocks) : base(strict, mocks) { }
-		//	public void Setup(Action setup, Func<ISequenceSetup<int>, int> setupCallback)
-		//	{
-		//		base.InterceptSetup(setup, setupCallback);
-		//	}
+			var sequence = new NewMockSequence(true, mock) { Cyclical = true };
+			var verifiableSequence1 = sequence.Setup(() => mock.Setup(m => m.Do(1)).Returns(1), Times.AtMost(2));
+			var verifiableSequence2 = sequence.Setup(() => mock.Setup(m => m.Do(2)).Returns(2));
 
-		//	public List<ISequenceSetup<int>> ConditionCalls = new List<ISequenceSetup<int>>();
+			mocked.Do(1);
+			verifiableSequence1.Verify(1);
+			mocked.Do(1);
+			verifiableSequence1.Verify(2);
+			mocked.Do(2);
+			mocked.Do(1);
+			verifiableSequence1.Verify(3);
 
-		//	protected override bool Condition(ISequenceSetup<int> trackedSetup)
-		//	{
-		//		ConditionCalls.Add(trackedSetup);
-		//		return true;
-		//	}
+			var exception = Assert.Throws<SequenceException>(() => verifiableSequence1.Verify(4));
+			Assert.Equal("Expected invocation on the mock exactly 4 times, but was 3 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+		}
 
-		//	//internal List<TrackedSetup<int>> GetAllTrackedSetups()
-		//	//{
-		//	//	return allTrackedSetups;
-		//	//}
+		internal class DefaultSequenceSetup : SequenceSetupBase
+		{
+			public DefaultInvocationShapeSetups InvocationShapeSetups => (DefaultInvocationShapeSetups)InvocationShapeSetupsObject;
+		}
 
-		//	//internal IReadOnlyList<ITrackedSetup<int>> GetTrackedSetups()
-		//	//{
-		//	//	return TrackedSetups;
-		//	//}
+		internal class DefaultInvocationShapeSetups : InvocationShapeSetupsBase<DefaultSequenceSetup> {
+			public DefaultInvocationShapeSetups(DefaultSequenceSetup sequenceSetup) : base(sequenceSetup) { }
 
-		//	internal IReadOnlyList<ISequenceSetup<int>> GetSequenceSetups()
-		//	{
-		//		return SequenceSetups;
-		//	}
+			public IReadOnlyList<DefaultSequenceSetup> GetSequenceSetups()
+			{
+				return SequenceSetups;
+			}
+		}
 
-		//	public bool InvocationsHaveMatchingSetups()
-		//	{
-		//		return base.InvocationsHaveMatchingSequenceSetup();
-		//	}
+		internal class AMockSequence : MockSequenceBase<DefaultSequenceSetup, DefaultInvocationShapeSetups>
+		{
+			public bool StrictFailure { get; set; }
+			public bool CallBaseForStrictFailure { get; set; }
+			public bool ConditionReturn { get; set; } = true;
+			public AMockSequence(bool strict, params Mock[] mocks) : base(strict, mocks) { }
+			public void Setup(Action setup, Action<DefaultSequenceSetup> setupCallback)
+			{
+				base.InterceptSetup(setup, setupCallback);
+			}
 
-		//	protected override void StrictnessFailure(IEnumerable<SequenceInvocation> unmatchedInvocations)
-		//	{
-		//		StrictFailure = true;
-		//		if (CallBaseForStrictFailure)
-		//		{
-		//			base.StrictnessFailure(unmatchedInvocations);
-		//		}
-		//	}
+			public List<DefaultSequenceSetup> ConditionSequenceSetups = new List<DefaultSequenceSetup>();
 
-		//	protected override void VerifyImpl()
-		//	{
-		//		throw new NotImplementedException();
-		//	}
-		//}
+			protected override bool Condition(DefaultSequenceSetup sequenceSetup)
+			{
+				ConditionSequenceSetups.Add(sequenceSetup);
+				return ConditionReturn;
+			}
+
+			internal IReadOnlyList<DefaultSequenceSetup> GetSequenceSetups()
+			{
+				return SequenceSetups;
+			}
+
+			public bool InvocationsHaveMatchingSetups()
+			{
+				return base.InvocationsHaveMatchingSequenceSetup();
+			}
+
+			protected override void StrictnessFailure(IEnumerable<ISequenceInvocation> unmatchedInvocations)
+			{
+				StrictFailure = true;
+				if (CallBaseForStrictFailure)
+				{
+					base.StrictnessFailure(unmatchedInvocations);
+				}
+			}
+
+			protected override void VerifyImpl()
+			{
+				throw new NotImplementedException();
+			}
+		}
 
 		public interface IHaveNested
 		{
