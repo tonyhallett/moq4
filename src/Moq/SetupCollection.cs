@@ -135,11 +135,6 @@ namespace Moq
 			return null;
 		}
 
-		internal void Remove(Setup setup)
-		{
-			setups.Remove(setup);
-		}
-
 		public IEnumerable<Setup> GetInnerMockSetups()
 		{
 			return this.ToArray(setup => !setup.IsOverridden && !setup.IsConditional && setup.InnerMock != null);
