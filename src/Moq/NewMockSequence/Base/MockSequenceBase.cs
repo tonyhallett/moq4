@@ -128,6 +128,8 @@ namespace Moq
 					{
 						/*
 							Invocation.MatchingSetup is not set until the condition has returned true. 
+							i.e when Condition returns true there will be an invocation that matches the Setup
+							
 							If need to move the test in to the condition part
 							Will need to change Setup.Matches to attach the Invocation to the Condition
 						*/
@@ -226,19 +228,13 @@ namespace Moq
 		/// <summary>
 		/// 
 		/// </summary>
-		public void Verify()
+		protected void VerifyInvocationsHaveMatchingSequenceSetup()
 		{
 			if (strict && !InvocationsHaveMatchingSequenceSetup())
 			{
 				throw new StrictSequenceException { UnmatchedSequenceInvocations = UnmatchedInvocations() };
 			}
-			VerifyImpl();
 		}
-
-		/// <summary>
-		/// 
-		/// </summary>
-		protected abstract void VerifyImpl();
 		
 	}
 

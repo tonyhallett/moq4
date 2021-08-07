@@ -86,7 +86,7 @@ namespace Moq
 
 				if (nextSequenceSetupIndex > currentSequenceSetupIndex)
 				{
-					ConfirmSequenceSetupsSatisfiedFromCurrentToExclusive(nextSequenceSetupIndex);
+					ConfirmSequenceSetupsOptionalFromCurrentToExclusive(nextSequenceSetupIndex);
 					currentSequenceSetupIndex = nextSequenceSetupIndex;
 					CurrentSequenceSetupInvoked();
 				}
@@ -210,7 +210,7 @@ namespace Moq
 			}
 		}
 
-		private void ConfirmSequenceSetupsSatisfiedFromCurrentToExclusive(int upToIndex)
+		private void ConfirmSequenceSetupsOptionalFromCurrentToExclusive(int upToIndex)
 		{
 			for (var i = currentSequenceSetupIndex + 1; i < upToIndex; i++)
 			{
@@ -222,9 +222,9 @@ namespace Moq
 		{
 			if (Cyclical)
 			{
-				ConfirmRemainingSequenceSetupsSatisfied();
+				ConfirmRemainingSequenceSetupsOptional();
 				ResetForCyclical();
-				ConfirmPreviousSequenceSetupsSatisfied(newSequenceSetup.SetupIndex);
+				ConfirmPreviousSequenceSetupsOptional(newSequenceSetup.SetupIndex);
 				currentSequenceSetupIndex = newSequenceSetup.SetupIndex;
 				CurrentSequenceSetupInvoked();
 			}
@@ -239,12 +239,12 @@ namespace Moq
 			return true;
 		}
 
-		private void ConfirmRemainingSequenceSetupsSatisfied()
+		private void ConfirmRemainingSequenceSetupsOptional()
 		{
-			ConfirmSequenceSetupsSatisfiedFromCurrentToExclusive(SequenceSetups.Count);
+			ConfirmSequenceSetupsOptionalFromCurrentToExclusive(SequenceSetups.Count);
 		}
 
-		private void ConfirmPreviousSequenceSetupsSatisfied(int upToIndex)
+		private void ConfirmPreviousSequenceSetupsOptional(int upToIndex)
 		{
 			for (var i = 0; i < upToIndex; i++)
 			{
@@ -263,9 +263,10 @@ namespace Moq
 		/// <summary>
 		/// 
 		/// </summary>
-		protected override void VerifyImpl()
+		public void Verify()
 		{
-			for(var i = currentSequenceSetupIndex; i < SequenceSetups.Count; i++)
+			base.VerifyInvocationsHaveMatchingSequenceSetup();
+			for (var i = currentSequenceSetupIndex; i < SequenceSetups.Count; i++)
 			{
 				ConfirmSequenceSetupSatisfied(SequenceSetups[i]);
 			}

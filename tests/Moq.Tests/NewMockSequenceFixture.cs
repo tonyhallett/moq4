@@ -43,7 +43,7 @@ namespace Moq.Tests
 			};
 			aMockSequence.Setup(() => mock.Setup(f => f.Do(1)), callback);
 			Assert.Equal(0, setupIndex);
-			Assert.Equal("MockSequenceFixture.IFoo f => f.Do(1)", sequenceSetupFromAction.Setup.ToString());
+			Assert.Equal("NewMockSequenceFixture.IFoo f => f.Do(1)", sequenceSetupFromAction.Setup.ToString());
 			var commonSequenceSetups = invocationShapeSetups.GetSequenceSetups();
 			Assert.Single(commonSequenceSetups);
 			Assert.Same(sequenceSetupFromAction, commonSequenceSetups[0]);
@@ -57,7 +57,7 @@ namespace Moq.Tests
 				nestedMock.Setup(n => n.ReturnNested(1).DoNested(1));
 			}, callback);
 			Assert.Equal(1, setupIndex);
-			Assert.Equal("MockSequenceFixture.INested ... => ....DoNested(1)", sequenceSetupFromAction.Setup.ToString());
+			Assert.Equal("NewMockSequenceFixture.INested ... => ....DoNested(1)", sequenceSetupFromAction.Setup.ToString());
 			// captures all setups
 			Assert.Equal(3, aMockSequence.AllSetups.Count);
 			var sequenceSetups = aMockSequence.GetSequenceSetups();
@@ -82,7 +82,7 @@ namespace Moq.Tests
 			DefaultSequenceSetup sequenceSetup = null;
 			aMockSequence.Setup(() => protectedAsMock.Setup(m => m.ProtectedDo(1)), s => sequenceSetup = s);
 			var x = sequenceSetup.Setup.ToString();
-			Assert.Equal("MockSequenceFixture.Protected m => m.ProtectedDo(1)", sequenceSetup.Setup.ToString());
+			Assert.Equal("NewMockSequenceFixture.Protected m => m.ProtectedDo(1)", sequenceSetup.Setup.ToString());
 		}
 
 		[Fact]
@@ -95,7 +95,7 @@ namespace Moq.Tests
 			Assert.Single(aMockSequence.ConditionSequenceSetups);
 			var conditionSequenceSetup = aMockSequence.ConditionSequenceSetups[0];
 			Assert.IsType<DefaultSequenceSetup>(conditionSequenceSetup);
-			Assert.Equal("MockSequenceFixture.IFoo f => f.Do(1)", conditionSequenceSetup.Setup.ToString());
+			Assert.Equal("NewMockSequenceFixture.IFoo f => f.Do(1)", conditionSequenceSetup.Setup.ToString());
 
 			Assert.Equal(0, conditionSequenceSetup.SetupIndex);
 			var defaultInvocationShapesSetups = conditionSequenceSetup.InvocationShapeSetupsObject as DefaultInvocationShapeSetups;
@@ -242,7 +242,7 @@ namespace Moq.Tests
 				})
 			);
 
-			Assert.Equal("Expected invocation on the mock once, but was 0 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+			Assert.Equal("Expected invocation on the mock once, but was 0 times: NewMockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
 		[Fact]
@@ -277,7 +277,7 @@ namespace Moq.Tests
 				})
 			);
 
-			Assert.Equal("Expected invocation on the mock exactly 2 times, but was 1 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+			Assert.Equal("Expected invocation on the mock exactly 2 times, but was 1 times: NewMockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
 		[Fact]
@@ -297,7 +297,7 @@ namespace Moq.Tests
 				})
 			);
 
-			Assert.Equal("Expected invocation on the mock exactly 2 times, but was 3 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+			Assert.Equal("Expected invocation on the mock exactly 2 times, but was 3 times: NewMockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
 		[Fact]
@@ -346,7 +346,7 @@ namespace Moq.Tests
 				})
 			);
 
-			Assert.Equal("Expected invocation on the mock at least 2 times, but was 1 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+			Assert.Equal("Expected invocation on the mock at least 2 times, but was 1 times: NewMockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
 		[Fact]
@@ -383,7 +383,7 @@ namespace Moq.Tests
 				})
 			);
 
-			Assert.Equal("Expected invocation on the mock should never have been performed, but was 1 times: MockSequenceFixture.IFoo m => m.Do(2)", exception.Message);
+			Assert.Equal("Expected invocation on the mock should never have been performed, but was 1 times: NewMockSequenceFixture.IFoo m => m.Do(2)", exception.Message);
 		}
 
 		[Fact]
@@ -417,7 +417,7 @@ namespace Moq.Tests
 				})
 			);
 
-			Assert.Equal("Expected invocation on the mock at most 2 times, but was 3 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+			Assert.Equal("Expected invocation on the mock at most 2 times, but was 3 times: NewMockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
 		[Fact]
@@ -487,7 +487,7 @@ namespace Moq.Tests
 				})
 			);
 
-			Assert.Equal("Expected invocation on the mock between 0 and 2 times (Inclusive), but was 3 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+			Assert.Equal("Expected invocation on the mock between 0 and 2 times (Inclusive), but was 3 times: NewMockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
 		[Fact]
@@ -504,7 +504,7 @@ namespace Moq.Tests
 				})
 			);
 
-			Assert.Equal("Expected invocation on the mock between 1 and 2 times (Inclusive), but was 0 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+			Assert.Equal("Expected invocation on the mock between 1 and 2 times (Inclusive), but was 0 times: NewMockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
 		[Fact]
@@ -524,7 +524,7 @@ namespace Moq.Tests
 				Assert.Equal(2, mocked.Do(1));
 				Assert.Equal(2, mocked.Do(1));
 				var exception = Assert.Throws<SequenceException>(() => mocked.Do(1));
-				Assert.Equal("Expected invocation on the mock at most 3 times, but was 4 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+				Assert.Equal("Expected invocation on the mock at most 3 times, but was 4 times: NewMockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 
 				Assert.Equal(1, protectedMocked.InvokeProtectedDo(1));
 			});
@@ -573,7 +573,7 @@ namespace Moq.Tests
 				})
 			);
 
-			Assert.Equal("Expected invocation on the mock between 1 and 3 times (Exclusive), but was 3 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+			Assert.Equal("Expected invocation on the mock between 1 and 3 times (Exclusive), but was 3 times: NewMockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
 		[Fact]
@@ -591,7 +591,7 @@ namespace Moq.Tests
 				})
 			);
 
-			Assert.Equal("Expected invocation on the mock between 1 and 3 times (Exclusive), but was 1 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+			Assert.Equal("Expected invocation on the mock between 1 and 3 times (Exclusive), but was 1 times: NewMockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
 		[Fact]
@@ -628,7 +628,7 @@ namespace Moq.Tests
 				});
 			});
 
-			Assert.Equal("Expected invocation on the mock once, but was 0 times: MockSequenceFixture.Protected p => p.ProtectedDo(2)", exception.Message);
+			Assert.Equal("Expected invocation on the mock once, but was 0 times: NewMockSequenceFixture.Protected p => p.ProtectedDo(2)", exception.Message);
 		}
 
 		[Fact]
@@ -900,7 +900,7 @@ namespace Moq.Tests
 			Assert.Equal(3, mocked.Do(3));
 
 			var exception = Assert.Throws<SequenceException>(() => Assert.Equal(2, mocked.Do(2)));
-			Assert.Equal("Expected invocation on the mock once, but was 0 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+			Assert.Equal("Expected invocation on the mock once, but was 0 times: NewMockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
 		[Fact]
@@ -1009,7 +1009,7 @@ namespace Moq.Tests
 			verifiableSequence1.Verify(3);
 
 			var exception = Assert.Throws<SequenceException>(() => verifiableSequence1.Verify(4));
-			Assert.Equal("Expected invocation on the mock exactly 4 times, but was 3 times: MockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
+			Assert.Equal("Expected invocation on the mock exactly 4 times, but was 3 times: NewMockSequenceFixture.IFoo m => m.Do(1)", exception.Message);
 		}
 
 		internal class DefaultSequenceSetup : SequenceSetupBase
@@ -1065,9 +1065,9 @@ namespace Moq.Tests
 				}
 			}
 
-			protected override void VerifyImpl()
+			public void Verify_InvocationsHaveMatchingSequenceSetup()
 			{
-				throw new NotImplementedException();
+				base.VerifyInvocationsHaveMatchingSequenceSetup();
 			}
 		}
 
