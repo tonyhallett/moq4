@@ -18,7 +18,7 @@ namespace Moq
 		private int setupCount = -1;
 		private readonly Mock[] mocks;
 		private readonly SequenceInvocationListener sequenceInvocationListener;
-		private readonly List<ISetup> allSetups = new List<ISetup>();
+		private readonly List<Setup> allSetups = new List<Setup>();
 		private readonly List< TInvocationShapeSetups> allInvocationShapeSetups = new List< TInvocationShapeSetups>();
 		private readonly List<TSequenceSetup> sequenceSetups = new List<TSequenceSetup>();
 		/// <summary>
@@ -47,7 +47,34 @@ namespace Moq
 			this.mocks = mocks;
 			this.strict = strict;
 			sequenceInvocationListener = new SequenceInvocationListener(mocks);
+			sequenceInvocationListener.NewInvocationEvent += SequenceInvocationListener_NewInvocationEvent;
 			sequenceInvocationListener.ListenForInvocations();
+		}
+
+		// todo - for MockAs get duplicate events
+		private void SequenceInvocationListener_NewInvocationEvent(object sender, SequenceInvocation sequenceInvocation)
+		{
+			var invocation = sequenceInvocation.InvocationInternal;
+
+			var noMatch = !allSetups.Any(setup =>
+				{
+					var isMatch = false;
+					// second condition for mock.As
+					if (setup.Mock == sequenceInvocation.Mock || setup.Mock.MutableSetups == sequenceInvocation.Mock.MutableSetups)
+					{
+						isMatch = setup.Expectation.IsMatch(invocation);
+					}
+					return isMatch;
+				});
+			if (noMatch)
+			{
+				if (strict)
+				{
+					StrictnessFailure(sequenceInvocation);
+				}
+				
+			}
+			
 		}
 
 		/// <summary>
@@ -126,21 +153,6 @@ namespace Moq
 					},
 					() =>
 					{
-						/*
-							Invocation.MatchingSetup is not set until the condition has returned true. 
-							i.e when Condition returns true there will be an invocation that matches the Setup
-							
-							If need to move the test in to the condition part
-							Will need to change Setup.Matches to attach the Invocation to the Condition
-						*/
-						if (strict)
-						{
-							if (!InvocationsHaveMatchingSequenceSetup())
-							{
-								StrictnessFailure(UnmatchedInvocations());
-							}
-						}
-
 						SetupExecuted(sequenceSetup);
 					})
 				);
@@ -154,10 +166,10 @@ namespace Moq
 		/// <summary>
 		/// 
 		/// </summary>
-		/// <param name="unmatchedInvocations"></param>
-		protected virtual void StrictnessFailure(IEnumerable<ISequenceInvocation> unmatchedInvocations)
+		/// <param name="unmatchedInvocation"></param>
+		protected virtual void StrictnessFailure(ISequenceInvocation unmatchedInvocation)
 		{
-			throw new StrictSequenceException { UnmatchedSequenceInvocations = unmatchedInvocations };
+			throw new StrictSequenceException($"Invocation without sequence setup. {unmatchedInvocation.Invocation}") { UnmatchedInvocation = unmatchedInvocation };
 		}
 
 		/// <summary>
@@ -179,63 +191,14 @@ namespace Moq
 		/// <summary>
 		/// 
 		/// </summary>
-		/// <returns></returns>
-		protected IEnumerable<ISequenceInvocation> UnmatchedInvocations()
+		public void VerifyNoOtherCalls()
 		{
-			return UnmatchedInvocationsInternal().Cast<ISequenceInvocation>();
-		}
-
-		private IEnumerable<SequenceInvocation> UnmatchedInvocationsInternal()
-		{
-			return SequenceInvocations.Where(si => !si.Matched);
-		}
-
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <returns></returns>
-		protected bool InvocationsHaveMatchingSequenceSetup()
-		{
-			foreach(var sequenceInvocation in UnmatchedInvocationsInternal())
+			var invocationsWithoutSequenceSetup = SequenceInvocations.Where(si => si.Invocation.MatchingSetup == null).ToList();
+			if (invocationsWithoutSequenceSetup.Count > 0)
 			{
-				if (!InvocationHasMatchingSequenceSetup(sequenceInvocation))
-				{
-					return false;
-				}
-			}
-			return true;
-		}
-
-		private bool InvocationHasMatchingSequenceSetup(SequenceInvocation sequenceInvocation)
-		{
-			var invocation = sequenceInvocation.Invocation;
-			if (invocation.MatchingSetup == null)
-			{
-				return false;
-			}
-
-			foreach (var setup in allSetups)
-			{
-				if (invocation.MatchingSetup == setup)
-				{
-					sequenceInvocation.Matched = true;
-					break;
-				}
-			}
-			return sequenceInvocation.Matched;
-		}
-
-		/// <summary>
-		/// 
-		/// </summary>
-		protected void VerifyInvocationsHaveMatchingSequenceSetup()
-		{
-			if (strict && !InvocationsHaveMatchingSequenceSetup())
-			{
-				throw new StrictSequenceException { UnmatchedSequenceInvocations = UnmatchedInvocations() };
+				throw new SequenceException($"Expected no invocations without sequence setup but found {invocationsWithoutSequenceSetup.Count}");
 			}
 		}
-		
 	}
 
 }

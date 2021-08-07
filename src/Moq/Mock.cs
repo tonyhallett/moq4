@@ -194,7 +194,7 @@ namespace Moq
 
 		private readonly List<Action<Invocation>> invocationListeners = new List<Action<Invocation>>();
 
-		internal void AddInvocationListener(Action<Invocation> listener)
+		internal virtual void AddInvocationListener(Action<Invocation> listener)
 		{
 			invocationListeners.Add(listener);
 		}

@@ -27,7 +27,7 @@ namespace Moq
 		/// 
 		/// </summary>
 		/// <param name="sequenceSetup"></param>
-		public VerifiableSetup(CyclicalTimesSequenceSetup sequenceSetup)
+		internal VerifiableSetup(CyclicalTimesSequenceSetup sequenceSetup)
 		{
 			this.sequenceSetup = sequenceSetup;
 		}
@@ -62,6 +62,7 @@ namespace Moq
 		{
 			Verify(Times.Exactly(times));
 		}
+		
 		/// <summary>
 		/// 
 		/// </summary>
@@ -80,6 +81,15 @@ namespace Moq
 		public void VerifyAll(Times times)
 		{
 			Verify(times, sequenceSetup.InvocationShapeSetups.TotalExecutions());
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="times"></param>
+		public void VerifyAll(int times)
+		{
+			VerifyAll(Times.Exactly(times));
 		}
 
 		private void Verify(Times times, int executionCount, ISetup setup = null)

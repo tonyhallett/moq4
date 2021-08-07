@@ -13,7 +13,12 @@ namespace Moq
 		/// <summary>
 		/// 
 		/// </summary>
-		public IEnumerable<ISequenceInvocation> UnmatchedSequenceInvocations { get; set; }
+		/// <param name="message"></param>
+		public StrictSequenceException(string message) : base(message) { }
+		/// <summary>
+		/// 
+		/// </summary>
+		public ISequenceInvocation UnmatchedInvocation { get; set; }
 	}
 
 }

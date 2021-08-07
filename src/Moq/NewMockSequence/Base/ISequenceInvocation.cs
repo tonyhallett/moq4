@@ -12,10 +12,7 @@ namespace Moq
 		/// 
 		/// </summary>
 		IInvocation Invocation { get; }
-		/// <summary>
-		/// 
-		/// </summary>
-		bool Matched { get;  }
+		
 		/// <summary>
 		/// 
 		/// </summary>

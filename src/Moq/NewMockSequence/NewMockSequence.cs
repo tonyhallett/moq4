@@ -232,7 +232,8 @@ namespace Moq
 			{
 				if (strict) // to be determined
 				{
-					throw new StrictSequenceException() { UnmatchedSequenceInvocations = UnmatchedInvocations() };
+					var unmatchedInvocation = SequenceInvocations.Last();
+					throw new StrictSequenceException($"Cyclical invocation but not cyclic. {newSequenceSetup.Setup}") { UnmatchedInvocation = unmatchedInvocation };
 				}
 			}
 
@@ -265,12 +266,10 @@ namespace Moq
 		/// </summary>
 		public void Verify()
 		{
-			base.VerifyInvocationsHaveMatchingSequenceSetup();
 			for (var i = currentSequenceSetupIndex; i < SequenceSetups.Count; i++)
 			{
 				ConfirmSequenceSetupSatisfied(SequenceSetups[i]);
 			}
 		}
 	}
-
 }

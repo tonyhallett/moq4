@@ -8,10 +8,10 @@ namespace Moq
 	/// </summary>
 	internal class SequenceInvocation : ISequenceInvocation
 	{
-		public SequenceInvocation(Mock mock, IInvocation invocation)
+		public SequenceInvocation(Mock mock, Invocation invocation)
 		{
 			Mock = mock;
-			Invocation = invocation;
+			InvocationInternal = invocation;
 
 		}
 		/// <summary>
@@ -21,11 +21,9 @@ namespace Moq
 		/// <summary>
 		/// 
 		/// </summary>
-		public IInvocation Invocation { get; }
-		/// <summary>
-		/// 
-		/// </summary>
-		public bool Matched { get; set; }
+		public IInvocation Invocation => InvocationInternal;
+
+		public Invocation InvocationInternal { get; }
 	}
 
 }
