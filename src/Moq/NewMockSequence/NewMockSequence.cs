@@ -92,7 +92,7 @@ namespace Moq
 				}
 				else
 				{
-					condition = SetupBeforeCurrentCondition(sequenceSetup);
+					condition = SequenceSetupBeforeCurrentInvoked(sequenceSetup);
 				}
 			}
 
@@ -218,7 +218,7 @@ namespace Moq
 			}
 		}
 
-		private bool SetupBeforeCurrentCondition(CyclicalTimesSequenceSetup newSequenceSetup)
+		private bool SequenceSetupBeforeCurrentInvoked(CyclicalTimesSequenceSetup newSequenceSetup)
 		{
 			if (Cyclical)
 			{
